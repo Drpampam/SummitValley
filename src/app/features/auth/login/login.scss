@@ -384,6 +384,31 @@
   }
 }
 
+// ── Mobile brand (hidden by default, shown only when brand panel is hidden) ───
+.mobile-brand {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+
+  .brand-logo-mark {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, #CC0000 0%, #FFCD41 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(255,205,65,.3);
+    mat-icon { font-size: 22px; color: #fff; }
+  }
+
+  .brand-logo-name {
+    font-size: 16px; font-weight: 800;
+    color: var(--nb-text-primary);
+    letter-spacing: -0.3px;
+  }
+}
+
 @media (max-width: 1024px) {
   .brand-panel { flex: 0 0 36%; padding: 32px 28px; }
 }
@@ -404,10 +429,41 @@
 }
 
 @media (max-width: 480px) {
-  // On phones: hide brand panel entirely, form takes full screen
-  .brand-panel { display: none; }
-  .form-panel  { padding: 24px 20px; min-height: 100vh; }
-  .form-header .form-title { font-size: 22px; }
-  .demo-chips  { gap: 6px; }
-  .demo-chip   { padding: 6px 8px; font-size: 11px; }
+  // On phones: hide brand panel, show mini logo, form takes full screen
+  .brand-panel  { display: none; }
+  .mobile-brand { display: flex; }
+
+  .form-panel {
+    padding: 24px 16px;
+    min-height: 100vh;
+    align-items: flex-start;
+    overflow: hidden; // prevent orb from causing horizontal scroll
+
+    // Shrink the background orb so it doesn't overflow
+    &::before {
+      width: 200px; height: 200px;
+      top: -60px; right: -60px;
+    }
+  }
+
+  .form-wrapper {
+    padding: 24px 20px;
+    border-radius: 18px;
+  }
+
+  .form-header {
+    .form-title    { font-size: 22px; }
+    .form-subtitle { font-size: 13px; }
+  }
+
+  .demo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-chip { padding: 8px 10px; }
+}
+
+@media (max-width: 360px) {
+  .form-panel   { padding: 16px 12px; }
+  .form-wrapper { padding: 20px 16px; }
 }
