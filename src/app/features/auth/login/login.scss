@@ -410,26 +410,55 @@
 }
 
 @media (max-width: 1024px) {
+  // Landscape tablets: keep side-by-side, tighten brand panel
   .brand-panel { flex: 0 0 36%; padding: 32px 28px; }
+  .brand-hero .brand-headline { font-size: 34px; }
+  .feature-list { gap: 12px; }
+  .feature-item .feature-text strong { font-size: 13px; }
 }
 
 @media (max-width: 768px) {
-  .auth-layout { flex-direction: column; }
+  // Portrait tablets: stack with a compact brand header bar
+  .auth-layout   { flex-direction: column; }
+
   .brand-panel {
-    flex: 0 0 auto;
-    padding: 28px 24px;
-    min-height: 0;
+    flex: none;
+    padding: 16px 24px;
+    // Collapse to a slim header — just show the logo row
   }
-  .brand-hero .brand-headline { font-size: 26px; }
-  .brand-hero .brand-subline  { font-size: 13px; }
-  .feature-list  { display: none; }
-  .brand-footer  { display: none; }
-  .form-panel    { padding: 28px 24px; flex: 1; }
-  .form-wrapper  { max-width: 100%; }
+
+  // Stack brand content horizontally so logo sits in one line
+  .brand-content {
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+  }
+
+  // Hide everything except the logo on tablet header bar
+  .brand-hero, .feature-list, .brand-footer { display: none; }
+
+  .form-panel {
+    flex: 1;
+    padding: 32px 40px;
+    justify-content: flex-start;
+    padding-top: 40px;
+  }
+
+  .form-wrapper {
+    max-width: 460px;
+    width: 100%;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 540px) {
+  // Large phones / small tablets in portrait: tighten form panel padding
+  .form-panel   { padding: 24px 20px; }
+  .form-wrapper { max-width: 100%; }
 }
 
 @media (max-width: 480px) {
-  // On phones: hide brand panel, show mini logo, form takes full screen
+  // Phones: hide brand panel entirely, show inline mini logo, full-screen form
   .brand-panel  { display: none; }
   .mobile-brand { display: flex; }
 
@@ -456,9 +485,7 @@
     .form-subtitle { font-size: 13px; }
   }
 
-  .demo-grid {
-    grid-template-columns: 1fr;
-  }
+  .demo-grid { grid-template-columns: 1fr; }
 
   .demo-chip { padding: 8px 10px; }
 }
