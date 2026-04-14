@@ -57,7 +57,7 @@ export class BillPayService {
           this.emailSvc.sendBillPayConfirmation(user.email, user.firstName, {
             biller:        p.billerName,
             amount:        fmtAmt,
-            confirmation:  p.confirmationCode,
+            confirmation:  p.confirmationCode ?? '',
             scheduledDate: p.scheduledDate,
             fromAccount:   p.fromAccountId,
           });
