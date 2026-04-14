@@ -1,0 +1,66 @@
+.stmts-page { display: flex; flex-direction: column; gap: 20px; max-width: 1000px; animation: fadeInUp .3s ease-out both; }
+
+// ── Header ─────────────────────────────────────────────────────────────────────
+.stmts-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; background: linear-gradient(135deg, #660000 0%, #880000 50%, #CC0000 100%); border-radius: var(--nb-radius-xl); padding: 22px 26px; flex-wrap: wrap; }
+.stmts-header-left { display: flex; align-items: center; gap: 14px; }
+.stmts-header-icon { width: 48px; height: 48px; border-radius: var(--nb-radius-md); background: rgba(0,0,0,.2); border: 1px solid rgba(255,205,65,.3); display: flex; align-items: center; justify-content: center; mat-icon { color: #FFCD41; font-size: 24px; } }
+.stmts-title { margin: 0 0 4px; font-size: 18px; font-weight: 800; color: #fff; }
+.stmts-sub   { margin: 0; font-size: 12px; color: rgba(255,255,255,.6); }
+.stmts-header-right { display: flex; align-items: center; }
+
+// ── eStatement toggle ──────────────────────────────────────────────────────────
+.estmt-toggle-row { display: flex; align-items: center; gap: 16px; }
+.estmt-info { }
+.estmt-label { display: flex; align-items: center; gap: 5px; margin: 0 0 2px; font-size: 13px; font-weight: 600; color: #fff; mat-icon { font-size: 15px; color: #FFCD41; } }
+.estmt-sub   { margin: 0; font-size: 11px; color: rgba(255,255,255,.55); }
+.estmt-enrolled-chip { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,205,65,.2); border: 1px solid rgba(255,205,65,.4); border-radius: 99px; padding: 3px 10px; font-size: 11px; font-weight: 700; color: #FFCD41; mat-icon { font-size: 13px; width: 13px; height: 13px; } }
+
+// ── Filter row ─────────────────────────────────────────────────────────────────
+.stmts-filter-row { display: flex; align-items: center; gap: 16px; }
+.stmts-filter-field { max-width: 300px; }
+.stmts-count { margin: 0; font-size: 12px; color: var(--nb-text-muted); }
+
+// ── Statement list ─────────────────────────────────────────────────────────────
+.stmts-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px; color: var(--nb-text-muted); mat-icon { font-size: 48px; width: 48px; height: 48px; opacity: .25; } p { margin: 0; } }
+
+.stmts-list { display: flex; flex-direction: column; background: var(--nb-card-bg); border: 1px solid var(--nb-border); border-radius: var(--nb-radius-xl); overflow: hidden; }
+
+.stmt-row {
+  display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+  border-bottom: 1px solid var(--nb-border-light); transition: background .12s;
+  &:last-child { border-bottom: none; }
+  &:hover { background: var(--nb-primary-pale); }
+}
+.stmt-icon { width: 40px; height: 40px; border-radius: var(--nb-radius-md); background: var(--nb-primary-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; mat-icon { color: var(--nb-primary); font-size: 20px; } }
+.stmt-info { min-width: 140px; flex-shrink: 0; }
+.stmt-month { margin: 0 0 2px; font-size: 14px; font-weight: 700; }
+.stmt-acct  { margin: 0; font-size: 11px; font-family: monospace; color: var(--nb-text-muted); }
+
+.stmt-stats { display: flex; gap: 24px; flex: 1; }
+.stmt-stat { }
+.stmt-stat-label { margin: 0 0 2px; font-size: 10px; font-weight: 600; color: var(--nb-text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.stmt-stat-val { margin: 0; font-size: 13px; font-weight: 600; &.credit { color: #15803d; } &.debit { color: var(--nb-danger); } }
+
+.stmt-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.stmt-size   { margin: 0; font-size: 11px; color: var(--nb-text-muted); }
+.stmt-dl-btn { font-size: 13px !important; border-color: var(--nb-primary) !important; color: var(--nb-primary) !important; border-radius: var(--nb-radius-sm) !important; display: flex !important; align-items: center !important; gap: 5px !important; mat-icon { font-size: 16px; } }
+
+@media (max-width: 768px) {
+  .stmts-header      { flex-direction: column; padding: 18px 16px; }
+  .stmts-filter-row  { flex-wrap: wrap; }
+  .stmts-filter-field { max-width: 100%; width: 100%; }
+  .stmt-row          { flex-wrap: wrap; gap: 10px; }
+  .stmt-stats        { flex-wrap: wrap; gap: 12px; }
+  .stmt-actions      { flex-direction: row; align-items: center; width: 100%; justify-content: flex-end; }
+}
+
+@media (max-width: 480px) {
+  .stmts-header-icon { width: 40px; height: 40px; mat-icon { font-size: 20px; } }
+  .stmts-title       { font-size: 16px; }
+  .estmt-toggle-row  { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .stmt-row          { padding: 12px 14px; }
+  .stmt-info         { min-width: 0; }
+  .stmt-month        { font-size: 13px; }
+  .stmt-stats        { gap: 8px; }
+  .stmt-dl-btn       { font-size: 12px !important; }
+}

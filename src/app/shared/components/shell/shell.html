@@ -1,0 +1,198 @@
+<!-- ── Session Timeout Warning ────────────────────────────────── -->
+@if (sessionSvc.showWarning()) {
+  <div class="session-warning-bar" role="alert" aria-live="assertive">
+    <mat-icon class="sw-icon">timer</mat-icon>
+    <span>Your session will expire soon due to inactivity. Continue to stay logged in.</span>
+    <button mat-flat-button class="sw-extend-btn" (click)="sessionSvc.extendSession()">Stay Logged In</button>
+    <button mat-icon-button class="sw-dismiss-btn" (click)="sessionSvc.extendSession()" aria-label="Dismiss">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+}
+
+<div class="app-layout">
+
+  <!-- ── Mobile Backdrop ────────────────────────────────── -->
+  @if (isMobileOpen()) {
+    <div class="mobile-backdrop" (click)="closeSidebar()"></div>
+  }
+
+  <!-- ── Sidebar ─────────────────────────────────────────── -->
+  <aside class="sidebar" [class.mobile-open]="isMobileOpen()">
+
+    <!-- Logo + close button on mobile -->
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <mat-icon>account_balance</mat-icon>
+      </div>
+      <span class="logo-name">Summit Valley Bank<span class="logo-dot"></span></span>
+      <button class="sidebar-close-btn" mat-icon-button (click)="closeSidebar()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Role badge -->
+    <div class="role-badge">
+      <mat-icon class="role-icon">{{ roleIcon }}</mat-icon>
+      <span class="role-label">{{ roleLabel }}</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+      <p class="nav-section-label">
+        @if (auth.isAdmin()) { System } @else if (auth.isManager()) { Workspace } @else { Main Menu }
+      </p>
+      @for (item of navItems(); track item.path) {
+        <a
+          class="nav-item"
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [matTooltip]="item.label"
+          matTooltipPosition="right"
+          (click)="closeSidebar()"
+        >
+          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+          <span class="nav-label">{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <!-- Security badge -->
+    <div class="security-badge">
+      <mat-icon>lock</mat-icon>
+      <div>
+        <p class="badge-title">256-bit SSL Secured</p>
+        <p class="badge-sub">Bank-grade encryption</p>
+      </div>
+    </div>
+
+    <!-- User section -->
+    <div class="sidebar-user" [matMenuTriggerFor]="userSideMenu">
+      <div class="sidebar-avatar">{{ userInitials }}</div>
+      <div class="sidebar-user-info">
+        <p class="sidebar-user-name">{{ userName }}</p>
+        <p class="sidebar-user-email">{{ userEmail }}</p>
+      </div>
+      <mat-icon class="sidebar-user-chevron">unfold_more</mat-icon>
+    </div>
+
+    <mat-menu #userSideMenu="matMenu" xPosition="after">
+      <button mat-menu-item routerLink="/profile" (click)="closeSidebar()">
+        <mat-icon>manage_accounts</mat-icon> Profile Settings
+      </button>
+      <mat-divider />
+      <button mat-menu-item class="logout-menu-item" (click)="logout()">
+        <mat-icon>logout</mat-icon> Log Out
+      </button>
+    </mat-menu>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────────────────── -->
+  <div class="main-wrapper">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <!-- Hamburger (mobile only) -->
+        <button mat-icon-button class="hamburger-btn" (click)="toggleSidebar()" aria-label="Open navigation">
+          <mat-icon>menu</mat-icon>
+        </button>
+        <h1 class="header-title">{{ pageTitle() }}</h1>
+      </div>
+
+      <div class="header-right">
+        <!-- Locale switcher (customers only) -->
+        @if (auth.isUser()) {
+          <div class="locale-switcher" [matMenuTriggerFor]="localeMenu">
+            <span class="locale-flag">{{ currentLocale().flag }}</span>
+            <span class="locale-label">{{ currentLocale().label }}</span>
+            <mat-icon class="locale-chevron">expand_more</mat-icon>
+          </div>
+
+          <mat-menu #localeMenu="matMenu">
+            @for (loc of locales; track loc.value) {
+              <button mat-menu-item (click)="onLocaleChange(loc.value)">
+                <span class="locale-menu-flag">{{ loc.flag }}</span>
+                {{ loc.label }}
+                @if (localeService.locale() === loc.value) {
+                  <mat-icon class="locale-check">check</mat-icon>
+                }
+              </button>
+            }
+          </mat-menu>
+
+          <div class="header-divider"></div>
+        }
+
+        <!-- Notifications -->
+        <button mat-icon-button class="header-icon-btn" [matMenuTriggerFor]="notifMenu" matTooltip="Alerts">
+          <mat-icon>{{ notificationCount() > 0 ? 'notifications' : 'notifications_none' }}</mat-icon>
+          @if (notificationCount() > 0) {
+            <span class="notif-ping"></span>
+          }
+        </button>
+
+        <mat-menu #notifMenu="matMenu" class="notif-menu">
+          <div class="notif-header">
+            <span>Active Alerts</span>
+            <span class="notif-count">{{ notificationCount() }} enabled</span>
+          </div>
+          <mat-divider />
+          @if (enabledAlerts().length === 0) {
+            <div class="notif-item notif-empty" mat-menu-item>
+              <div class="notif-icon warning"><mat-icon>notifications_off</mat-icon></div>
+              <div class="notif-body">
+                <p class="notif-title">No alerts enabled</p>
+                <p class="notif-time">Go to Alerts to configure</p>
+              </div>
+            </div>
+          } @else {
+            @for (a of enabledAlerts(); track a.id) {
+              <div class="notif-item" mat-menu-item routerLink="/alerts">
+                <div class="notif-icon" [class]="alertIconClass(a.trigger)">
+                  <mat-icon>{{ alertIcon(a.trigger) }}</mat-icon>
+                </div>
+                <div class="notif-body">
+                  <p class="notif-title">{{ a.label }}</p>
+                  <p class="notif-time">{{ alertChannels(a) }}</p>
+                </div>
+              </div>
+            }
+          }
+          <mat-divider />
+          <button mat-menu-item routerLink="/alerts" class="notif-manage-btn">
+            <mat-icon>tune</mat-icon>
+            <span>Manage Alerts</span>
+          </button>
+        </mat-menu>
+
+        <!-- User avatar -->
+        <button mat-icon-button class="header-avatar-btn" [matMenuTriggerFor]="headerUserMenu">
+          <div class="header-avatar">{{ userInitials }}</div>
+        </button>
+
+        <mat-menu #headerUserMenu="matMenu">
+          <div class="user-menu-top">
+            <p class="um-name">{{ userName }}</p>
+            <p class="um-email">{{ userEmail }}</p>
+            <p class="um-role">{{ roleLabel }}</p>
+          </div>
+          <mat-divider />
+          <button mat-menu-item routerLink="/profile">
+            <mat-icon>manage_accounts</mat-icon> Profile
+          </button>
+          <button mat-menu-item (click)="logout()">
+            <mat-icon>logout</mat-icon> Log Out
+          </button>
+        </mat-menu>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main class="page-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

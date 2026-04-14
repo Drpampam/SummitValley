@@ -1,0 +1,163 @@
+<div class="disputes-page">
+
+  <!-- Header -->
+  <div class="dsp-header">
+    <div class="dsp-header-left">
+      <div class="dsp-header-icon"><mat-icon>gavel</mat-icon></div>
+      <div>
+        <h2 class="dsp-title">Disputes</h2>
+        <p class="dsp-sub">File and track transaction dispute cases</p>
+      </div>
+    </div>
+    <div class="dsp-header-stats">
+      <div class="dsp-stat">
+        <p class="dsp-stat-label">Open</p>
+        <p class="dsp-stat-val">{{ openDisputes().length }}</p>
+      </div>
+      <div class="dsp-stat-div"></div>
+      <div class="dsp-stat">
+        <p class="dsp-stat-label">Total</p>
+        <p class="dsp-stat-val">{{ disputes().length }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="dsp-tabs">
+    <button class="dsp-tab" [class.active]="activeTab()==='open'" (click)="setTab('open')">
+      <mat-icon>pending</mat-icon> Open Cases
+    </button>
+    <button class="dsp-tab" [class.active]="activeTab()==='history'" (click)="setTab('history')">
+      <mat-icon>history</mat-icon> History
+    </button>
+    <button class="dsp-tab" [class.active]="activeTab()==='new'" (click)="setTab('new')">
+      <mat-icon>add_circle_outline</mat-icon> File a Dispute
+    </button>
+  </div>
+
+  <!-- ── OPEN CASES ─────────────────────────────────────────── -->
+  @if (activeTab() === 'open') {
+    @if (openDisputes().length === 0) {
+      <div class="dsp-empty">
+        <mat-icon>check_circle_outline</mat-icon>
+        <p>No open disputes. All clear!</p>
+        <button mat-flat-button class="dsp-cta-btn" (click)="setTab('new')">
+          <mat-icon>add</mat-icon> File a Dispute
+        </button>
+      </div>
+    } @else {
+      <div class="dsp-list">
+        @for (d of openDisputes(); track d.id) {
+          <div class="dsp-row">
+            <div class="dsp-row-icon" [class]="statusClass(d.status)">
+              <mat-icon>{{ statusIcon(d.status) }}</mat-icon>
+            </div>
+            <div class="dsp-row-info">
+              <p class="dsp-row-case">{{ d.caseNumber }}</p>
+              <p class="dsp-row-txn">{{ txnLabel(d.transactionId) }}</p>
+              <p class="dsp-row-reason">{{ reasonLabel(d.reason) }}</p>
+            </div>
+            <div class="dsp-row-right">
+              <span class="dsp-badge" [class]="statusClass(d.status)">{{ d.status | titlecase }}</span>
+              <p class="dsp-row-date">Submitted {{ d.submittedAt | date:'MMM d, y' }}</p>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ── HISTORY ─────────────────────────────────────────────── -->
+  @if (activeTab() === 'history') {
+    @if (historyDisputes().length === 0) {
+      <div class="dsp-empty">
+        <mat-icon>history</mat-icon>
+        <p>No closed dispute history yet.</p>
+      </div>
+    } @else {
+      <div class="dsp-list">
+        @for (d of historyDisputes(); track d.id) {
+          <div class="dsp-row">
+            <div class="dsp-row-icon" [class]="statusClass(d.status)">
+              <mat-icon>{{ statusIcon(d.status) }}</mat-icon>
+            </div>
+            <div class="dsp-row-info">
+              <p class="dsp-row-case">{{ d.caseNumber }}</p>
+              <p class="dsp-row-txn">{{ txnLabel(d.transactionId) }}</p>
+              <p class="dsp-row-reason">{{ reasonLabel(d.reason) }}</p>
+            </div>
+            <div class="dsp-row-right">
+              <span class="dsp-badge" [class]="statusClass(d.status)">{{ d.status | titlecase }}</span>
+              @if (d.resolvedAt) {
+                <p class="dsp-row-date">Resolved {{ d.resolvedAt | date:'MMM d, y' }}</p>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ── FILE A DISPUTE ─────────────────────────────────────── -->
+  @if (activeTab() === 'new') {
+    <div class="dsp-form-wrap">
+      <form [formGroup]="form" (ngSubmit)="submit()" class="dsp-form">
+        <h3 class="dsp-form-title">File a New Dispute</h3>
+
+        <div class="dsp-info-banner">
+          <mat-icon>info</mat-icon>
+          <span>Disputes are reviewed within 5–7 business days. Include as much detail as possible to help us resolve your case faster.</span>
+        </div>
+
+        <mat-form-field appearance="outline" class="dsp-field">
+          <mat-label>Select Transaction</mat-label>
+          <mat-select formControlName="transactionId">
+            @for (t of transactions(); track t.id) {
+              <mat-option [value]="t.id">
+                {{ t.description }} — {{ currency() }}{{ t.amount | number:'1.2-2' }}
+                ({{ t.date | date:'MMM d' }})
+              </mat-option>
+            }
+          </mat-select>
+          @if (form.get('transactionId')?.invalid && form.get('transactionId')?.touched) {
+            <mat-error>Please select a transaction</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="dsp-field">
+          <mat-label>Dispute Reason</mat-label>
+          <mat-select formControlName="reason">
+            @for (r of reasons; track r.value) {
+              <mat-option [value]="r.value">{{ r.label }}</mat-option>
+            }
+          </mat-select>
+          @if (form.get('reason')?.invalid && form.get('reason')?.touched) {
+            <mat-error>Please select a reason</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="dsp-field">
+          <mat-label>Description</mat-label>
+          <textarea matInput formControlName="description" rows="5"
+            placeholder="Describe the issue in detail (minimum 20 characters)…"></textarea>
+          @if (form.get('description')?.hasError('required') && form.get('description')?.touched) {
+            <mat-error>Description is required</mat-error>
+          }
+          @if (form.get('description')?.hasError('minlength') && form.get('description')?.touched) {
+            <mat-error>Please provide at least 20 characters</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="dsp-form-actions">
+          <button type="button" mat-stroked-button (click)="setTab('open')">Cancel</button>
+          <button type="submit" mat-flat-button class="dsp-submit-btn" [disabled]="submitting()">
+            @if (submitting()) { <mat-spinner diameter="18" style="margin-right:6px"></mat-spinner> }
+            @if (!submitting()) { <mat-icon>send</mat-icon> }
+            {{ submitting() ? 'Submitting…' : 'Submit Dispute' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+</div>

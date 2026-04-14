@@ -1,0 +1,96 @@
+<div class="stmts-page">
+
+  <!-- Header -->
+  <div class="stmts-header">
+    <div class="stmts-header-left">
+      <div class="stmts-header-icon"><mat-icon>description</mat-icon></div>
+      <div>
+        <h2 class="stmts-title">Statements</h2>
+        <p class="stmts-sub">Download monthly statements and manage paperless settings</p>
+      </div>
+    </div>
+    <div class="stmts-header-right">
+      <div class="estmt-toggle-row">
+        <div class="estmt-info">
+          <p class="estmt-label">
+            <mat-icon>eco</mat-icon> Paperless Statements
+          </p>
+          <p class="estmt-sub">Reduce paper mail and access statements instantly online</p>
+        </div>
+        <mat-slide-toggle
+          [checked]="eStatement()"
+          (change)="toggleEStatement($event.checked)">
+        </mat-slide-toggle>
+        @if (eStatement()) {
+          <span class="estmt-enrolled-chip"><mat-icon>check</mat-icon> Enrolled</span>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Account filter -->
+  <div class="stmts-filter-row">
+    <mat-form-field appearance="outline" class="stmts-filter-field">
+      <mat-label>Filter by Account</mat-label>
+      <mat-select [ngModel]="filterAccId()" (ngModelChange)="filterAccId.set($event)">
+        <mat-option value="">All Accounts</mat-option>
+        @for (a of accounts(); track a.id) {
+          <mat-option [value]="a.id">
+            {{ a.type === 'checking' ? 'Checking' : 'Savings' }} {{ a.accountNumber }}
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <p class="stmts-count">{{ filtered().length }} statement{{ filtered().length !== 1 ? 's' : '' }}</p>
+  </div>
+
+  <!-- Statement list -->
+  @if (filtered().length === 0) {
+    <div class="stmts-empty">
+      <mat-icon>description</mat-icon>
+      <p>No statements found for the selected account.</p>
+    </div>
+  } @else {
+    <div class="stmts-list">
+      @for (s of filtered(); track s.id) {
+        <div class="stmt-row">
+          <div class="stmt-icon"><mat-icon>description</mat-icon></div>
+          <div class="stmt-info">
+            <p class="stmt-month">{{ monthName(s.month) }} {{ s.year }}</p>
+            <p class="stmt-acct">{{ accountLabel(s.accountId) }}</p>
+          </div>
+          <div class="stmt-stats">
+            <div class="stmt-stat">
+              <p class="stmt-stat-label">Credits</p>
+              <p class="stmt-stat-val credit">+{{ currency() }}{{ s.totalCredits | number:'1.2-2' }}</p>
+            </div>
+            <div class="stmt-stat">
+              <p class="stmt-stat-label">Debits</p>
+              <p class="stmt-stat-val debit">-{{ currency() }}{{ s.totalDebits | number:'1.2-2' }}</p>
+            </div>
+            <div class="stmt-stat">
+              <p class="stmt-stat-label">Closing Balance</p>
+              <p class="stmt-stat-val">{{ currency() }}{{ s.closingBalance | number:'1.2-2' }}</p>
+            </div>
+            <div class="stmt-stat">
+              <p class="stmt-stat-label">Transactions</p>
+              <p class="stmt-stat-val">{{ s.transactionCount }}</p>
+            </div>
+          </div>
+          <div class="stmt-actions">
+            <p class="stmt-size">{{ s.pdfSize }}</p>
+            <button mat-stroked-button class="stmt-dl-btn" (click)="download(s)" [disabled]="downloadingId() === s.id">
+              @if (downloadingId() === s.id) {
+                <mat-spinner diameter="16"></mat-spinner>
+              } @else {
+                <mat-icon>download</mat-icon>
+              }
+              Download
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+</div>

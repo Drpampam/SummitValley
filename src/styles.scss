@@ -1,0 +1,361 @@
+@use '@angular/material' as mat;
+
+// ── Material 3 Red Theme ──────────────────────────────────────────────────────
+html {
+  height: 100%;
+  @include mat.theme((
+    color: (
+      primary:  mat.$red-palette,
+      tertiary: mat.$orange-palette,
+    ),
+    typography: Inter,
+    density: 0,
+  ));
+}
+
+body {
+  color-scheme: light;
+  background-color: var(--nb-page-bg);
+  color: var(--nb-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  margin: 0;
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// ── Design Tokens ──────────────────────────────────────────────────────────────
+:root {
+  // ── Wells Fargo Red ───────────────────────────────────────
+  --nb-primary:         #CC0000;   // WF primary red
+  --nb-primary-dark:    #AA0000;   // darker red
+  --nb-primary-darker:  #880000;   // deep red
+  --nb-primary-deep:    #660000;   // near-black red
+  --nb-primary-mid:     #EE1111;   // brighter red
+  --nb-primary-light:   #FFEEEE;   // pale red tint
+  --nb-primary-pale:    #FFF5F5;   // near-white red
+
+  // ── Wells Fargo Gold ──────────────────────────────────────
+  --nb-lemon:           #FFCD41;   // WF signature gold
+  --nb-lemon-dark:      #C9A000;   // dark gold
+  --nb-lemon-light:     #FFF8CC;   // light gold tint
+  --nb-lemon-pale:      #FFFAEC;   // near-white gold
+
+  // ── Semantic ─────────────────────────────────────────────
+  --nb-success:         #15803d;
+  --nb-success-bg:      #f0fdf4;
+  --nb-danger:          #CC0000;
+  --nb-danger-bg:       #FFF0F0;
+  --nb-warning:         #C9A000;
+  --nb-warning-bg:      #FFF8CC;
+
+  // ── Category colors ───────────────────────────────────────
+  --nb-cat-salary:      #8b5cf6;
+  --nb-cat-groceries:   #15803d;
+  --nb-cat-utilities:   #0891b2;
+  --nb-cat-dining:      #FFCD41;
+  --nb-cat-shopping:    #ec4899;
+  --nb-cat-transfer:    #CC0000;
+  --nb-cat-deposit:     #10b981;
+  --nb-cat-other:       #94a3b8;
+
+  // ── Surfaces ──────────────────────────────────────────────
+  --nb-page-bg:         #F4F4F4;   // WF light neutral grey
+  --nb-card-bg:         #FFFFFF;
+  --nb-sidebar-bg:      #CC0000;   // WF red sidebar
+  --nb-header-bg:       #FFFFFF;
+
+  // ── Borders ───────────────────────────────────────────────
+  --nb-border:          #DDDDDD;
+  --nb-border-dark:     #CCCCCC;
+  --nb-border-light:    #F0F0F0;
+
+  // ── Text ──────────────────────────────────────────────────
+  --nb-text-primary:    #1A1A1A;
+  --nb-text-secondary:  #333333;
+  --nb-text-muted:      #666666;
+
+  // ── Sidebar-specific text ─────────────────────────────────
+  --nb-side-text:       rgba(255, 255, 255, 0.92);
+  --nb-side-muted:      rgba(255, 255, 255, 0.52);
+  --nb-side-active-bg:  rgba(0, 0, 0, 0.22);
+  --nb-side-active-txt: #FFCD41;
+
+  // ── Layout ────────────────────────────────────────────────
+  --nb-sidebar-width:   260px;
+  --nb-header-height:   64px;
+  --nb-radius-sm:       2px;    // WF rigid — nearly square
+  --nb-radius-md:       3px;
+  --nb-radius-lg:       4px;
+  --nb-radius-xl:       6px;
+
+  // ── Shadows ───────────────────────────────────────────────
+  --nb-shadow-sm:   0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --nb-shadow-md:   0 4px 8px rgba(0,0,0,.12), 0 2px 4px rgba(0,0,0,.07);
+  --nb-shadow-lg:   0 8px 20px rgba(0,0,0,.15), 0 4px 8px rgba(0,0,0,.08);
+  --nb-shadow-glow: 0 0 0 3px rgba(204,0,0,.18);
+  --nb-shadow-card-hover: 0 4px 12px rgba(0,0,0,.12);
+}
+
+// ── Global ────────────────────────────────────────────────────────────────────
+* { box-sizing: border-box; }
+
+h1,h2,h3,h4,h5,h6 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: var(--nb-text-primary);
+}
+
+a {
+  color: var(--nb-primary);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+// ── Material Overrides ────────────────────────────────────────────────────────
+.mat-mdc-card {
+  background: var(--nb-card-bg) !important;
+  box-shadow: var(--nb-shadow-sm) !important;
+  border: 1px solid var(--nb-border) !important;
+  border-radius: var(--nb-radius-lg) !important;
+}
+
+// ── Form Field — animated 2026 style ─────────────────────────────────────────
+.mat-mdc-form-field {
+  font-family: 'Inter', sans-serif !important;
+
+  .mat-mdc-text-field-wrapper {
+    transition: box-shadow 0.22s cubic-bezier(.4,0,.2,1) !important;
+    border-radius: var(--nb-radius-md) !important;
+  }
+
+  // Focus: WF red glow + border
+  .mat-mdc-text-field-wrapper:focus-within {
+    box-shadow: 0 0 0 3px rgba(204,0,0,.15), 0 2px 8px rgba(204,0,0,.08) !important;
+  }
+  .mat-mdc-text-field-wrapper:focus-within .mdc-notched-outline__leading,
+  .mat-mdc-text-field-wrapper:focus-within .mdc-notched-outline__notch,
+  .mat-mdc-text-field-wrapper:focus-within .mdc-notched-outline__trailing {
+    border-color: var(--nb-primary) !important;
+    border-width: 2px !important;
+    transition: border-color .18s ease, border-width .14s ease !important;
+  }
+
+  // Valid (touched, non-pristine): subtle red border
+  &.ng-valid.ng-touched:not(.ng-pristine) .mdc-notched-outline__leading,
+  &.ng-valid.ng-touched:not(.ng-pristine) .mdc-notched-outline__notch,
+  &.ng-valid.ng-touched:not(.ng-pristine) .mdc-notched-outline__trailing {
+    border-color: rgba(204,0,0,.40) !important;
+  }
+
+  // Error: red border + shake on appear
+  &.ng-invalid.ng-touched .mdc-notched-outline__leading,
+  &.ng-invalid.ng-touched .mdc-notched-outline__notch,
+  &.ng-invalid.ng-touched .mdc-notched-outline__trailing {
+    border-color: var(--nb-danger) !important;
+  }
+  &.ng-invalid.ng-touched .mat-mdc-text-field-wrapper {
+    box-shadow: 0 0 0 3px rgba(204,0,0,.15) !important;
+  }
+
+  // mat-error slide-in
+  .mat-mdc-form-field-error-wrapper {
+    animation: errorSlideIn .2s cubic-bezier(.4,0,.2,1) both;
+  }
+
+  // Floating label: green when active
+  &.mat-focused .mdc-floating-label {
+    color: var(--nb-primary) !important;
+  }
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+.mat-mdc-button,
+.mat-mdc-raised-button,
+.mat-mdc-flat-button,
+.mat-mdc-stroked-button {
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  transition: transform .12s ease, box-shadow .15s ease, filter .12s ease !important;
+
+  &:active { transform: scale(0.97) !important; }
+}
+
+// ── Toast Notifications ───────────────────────────────────────────────────────
+.nb-toast {
+  &.mat-mdc-snack-bar-container {
+    border-radius: 6px !important;
+    min-width: 300px !important;
+    max-width: 420px !important;
+    box-shadow: 0 24px 60px rgba(0,0,0,.22), 0 8px 20px rgba(0,0,0,.1) !important;
+    animation: toastSlideIn .38s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    padding: 0 !important;
+
+    .mdc-snackbar__surface {
+      border-radius: 6px !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+    }
+
+    .mat-mdc-snack-bar-label {
+      font-family: 'Inter', sans-serif !important;
+      font-size: 13.5px !important;
+      font-weight: 500 !important;
+      padding: 14px 16px !important;
+      line-height: 1.5 !important;
+    }
+
+    .mat-mdc-snack-bar-actions {
+      padding-right: 12px !important;
+      .mdc-button {
+        font-family: 'Inter', sans-serif !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        min-width: 0 !important;
+        padding: 0 4px !important;
+        opacity: .8 !important;
+        &:hover { opacity: 1 !important; }
+      }
+    }
+  }
+
+  &.nb-toast-success.mat-mdc-snack-bar-container .mdc-snackbar__surface {
+    background: #880000 !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,205,65,.25) !important;
+    .mdc-button { color: #FFCD41 !important; }
+  }
+
+  &.nb-toast-error.mat-mdc-snack-bar-container .mdc-snackbar__surface {
+    background: #CC0000 !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,.2) !important;
+    .mdc-button { color: #FFCD41 !important; }
+  }
+
+  &.nb-toast-warning.mat-mdc-snack-bar-container .mdc-snackbar__surface {
+    background: #805000 !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,205,65,.3) !important;
+    .mdc-button { color: #FFCD41 !important; }
+  }
+
+  &.nb-toast-info.mat-mdc-snack-bar-container .mdc-snackbar__surface {
+    background: linear-gradient(135deg, #0c1a2e 0%, #1d4ed8 100%) !important;
+    color: #fff !important;
+    border: 1px solid rgba(147,197,253,.2) !important;
+    .mdc-button { color: #93c5fd !important; }
+  }
+}
+
+// ── Shake utility (attach to a form on invalid submit) ────────────────────────
+.nb-shake { animation: shake .45s cubic-bezier(.36,.07,.19,.97) both !important; }
+
+// ── Scrollbar ─────────────────────────────────────────────────────────────────
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--nb-border-dark);
+  border-radius: 2px;
+  &:hover { background: var(--nb-primary); }
+}
+
+// ── Keyframes ─────────────────────────────────────────────────────────────────
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(60px) scale(0.92); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%  { transform: translateX(-7px) rotate(-0.5deg); }
+  30%  { transform: translateX(6px) rotate(0.5deg); }
+  45%  { transform: translateX(-5px); }
+  60%  { transform: translateX(4px); }
+  75%  { transform: translateX(-2px); }
+}
+
+@keyframes errorSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fieldSlideIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.85); }
+  70%  { transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmerMove {
+  from { background-position: -400px 0; }
+  to   { background-position: 400px 0; }
+}
+
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,205,65,.6); }
+  50%       { box-shadow: 0 0 0 8px rgba(255,205,65,0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-4px); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes bar-grow {
+  from { width: 0 !important; }
+}
+
+@keyframes count-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes notif-ping {
+  0%    { transform: scale(1); opacity: 1; }
+  75%,100% { transform: scale(2); opacity: 0; }
+}
+
+// ── Page entry animation ──────────────────────────────────────────────────────
+router-outlet + * {
+  animation: fadeInUp 0.2s ease-out;
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+.animate-bar { animation: bar-grow 0.8s cubic-bezier(.4,0,.2,1) both; }
+.stagger-1   { animation-delay: 0.05s !important; }
+.stagger-2   { animation-delay: 0.10s !important; }
+.stagger-3   { animation-delay: 0.15s !important; }
+.stagger-4   { animation-delay: 0.20s !important; }
+.stagger-5   { animation-delay: 0.25s !important; }

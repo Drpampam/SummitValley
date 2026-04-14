@@ -1,0 +1,212 @@
+<div class="dashboard">
+
+  <!-- ── Greeting ───────────────────────────────────────────────────────── -->
+  <div class="greeting-row">
+    <div>
+      <h1 class="greeting-text">{{ greeting }}, {{ firstName }} 👋</h1>
+      <p class="greeting-sub">Here's your financial overview for today.</p>
+    </div>
+    <a class="new-transfer-btn" routerLink="/transfers" matRipple>
+      <mat-icon>add</mat-icon>
+      New Transfer
+    </a>
+  </div>
+
+  <!-- ── Net Worth Card ──────────────────────────────────────────────────── -->
+  <div class="net-worth-card">
+    <div class="nw-bg-orb nw-orb-1"></div>
+    <div class="nw-bg-orb nw-orb-2"></div>
+
+    <div class="nw-left">
+      <p class="nw-label">Total Portfolio Balance</p>
+      <h2 class="nw-amount">{{ fmt(animatedBalance()) }}</h2>
+      <div class="nw-badge">
+        <mat-icon>trending_up</mat-icon>
+        <span>+2.4% this month</span>
+      </div>
+    </div>
+
+    <div class="nw-stats">
+      <div class="nw-stat">
+        <p class="nw-stat-label">Monthly Income</p>
+        <p class="nw-stat-val income">+{{ fmt(monthlyStats().income) }}</p>
+      </div>
+      <div class="nw-vdiv"></div>
+      <div class="nw-stat">
+        <p class="nw-stat-label">Monthly Expenses</p>
+        <p class="nw-stat-val expense">-{{ fmt(monthlyStats().expenses) }}</p>
+      </div>
+      <div class="nw-vdiv"></div>
+      <div class="nw-stat">
+        <p class="nw-stat-label">Net Flow</p>
+        <p class="nw-stat-val" [class.income]="monthlyStats().net >= 0" [class.expense]="monthlyStats().net < 0">
+          {{ monthlyStats().net >= 0 ? '+' : '' }}{{ fmt(monthlyStats().net) }}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Account Cards ───────────────────────────────────────────────────── -->
+  <div class="accounts-row">
+    @for (acc of accounts(); track acc.id; let i = $index) {
+      <div class="account-card" [style.background]="accountGradient(i)" [class.dark-card]="i === 0" [class.light-card]="i !== 0">
+        <div class="ac-inner">
+          <div class="ac-top">
+            <div class="ac-type-wrap">
+              <mat-icon class="ac-type-icon">{{ acc.type === 'checking' ? 'account_balance_wallet' : 'savings' }}</mat-icon>
+              <span class="ac-type-label">{{ accountLabel(acc.type) }}</span>
+            </div>
+            <div class="ac-chip">{{ localeService.currency() }}</div>
+          </div>
+
+          <div class="ac-balance">{{ fmt(acc.balance) }}</div>
+
+          <div class="ac-bottom">
+            <div class="ac-number-row">
+              <span class="ac-number">{{ acc.accountNumber }}</span>
+              <button
+                class="ac-copy-btn"
+                (click)="copyAccountNumber(acc.accountNumber, acc.id)"
+                [matTooltip]="copiedAccountId() === acc.id ? 'Copied!' : 'Copy'"
+              >
+                <mat-icon>{{ copiedAccountId() === acc.id ? 'check' : 'content_copy' }}</mat-icon>
+              </button>
+            </div>
+            <div class="ac-avail">Available: {{ fmt(acc.availableBalance) }}</div>
+          </div>
+        </div>
+
+        <!-- Decorative circles -->
+        <div class="ac-deco ac-deco-1"></div>
+        <div class="ac-deco ac-deco-2"></div>
+      </div>
+    }
+  </div>
+
+  <!-- ── Bottom Grid ─────────────────────────────────────────────────────── -->
+  <div class="bottom-grid">
+
+    <!-- Left column -->
+    <div class="col-left">
+
+      <!-- Quick Actions -->
+      <div class="section-card">
+        <div class="sc-header">
+          <h3 class="sc-title">Quick Actions</h3>
+        </div>
+        <div class="qa-grid">
+          @for (action of quickActions; track action.label) {
+            <a class="qa-item" [routerLink]="action.route" matRipple [matRippleColor]="'rgba(22,163,74,.1)'">
+              <div class="qa-icon" [style.background]="action.bg">
+                <mat-icon [style.color]="action.color">{{ action.icon }}</mat-icon>
+              </div>
+              <span class="qa-label">{{ action.label }}</span>
+              <mat-icon class="qa-arrow">arrow_forward_ios</mat-icon>
+            </a>
+          }
+        </div>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="section-card">
+        <div class="sc-header">
+          <h3 class="sc-title">Recent Transactions</h3>
+          <a class="sc-link" routerLink="/transactions">
+            View all <mat-icon>chevron_right</mat-icon>
+          </a>
+        </div>
+
+        <div class="txn-list">
+          @for (txn of recentTransactions(); track txn.id; let last = $last; let i = $index) {
+            <div class="txn-row" [class]="'stagger-' + (i + 1)">
+              <div class="txn-icon" [style.background]="categoryColor(txn.category) + '15'" [style.border-color]="categoryColor(txn.category) + '30'">
+                <mat-icon [style.color]="categoryColor(txn.category)">{{ categoryIcon(txn.category) }}</mat-icon>
+              </div>
+              <div class="txn-info">
+                <p class="txn-desc">{{ txn.description }}</p>
+                <p class="txn-meta">{{ relativeDate(txn.date) }} · {{ txn.category | titlecase }}</p>
+              </div>
+              <div class="txn-right">
+                <div class="txn-amount" [class.credit]="txn.type === 'credit'" [class.debit]="txn.type === 'debit'">
+                  {{ txn.type === 'credit' ? '+' : '-' }}{{ fmt(txn.amount) }}
+                </div>
+                <div class="txn-status" [class]="'status-' + txn.status">{{ txn.status }}</div>
+              </div>
+            </div>
+            @if (!last) { <div class="txn-sep"></div> }
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: spending breakdown -->
+    <div class="col-right">
+      <div class="section-card spending-card">
+        <div class="sc-header">
+          <h3 class="sc-title">Spending Breakdown</h3>
+          <span class="sc-badge">This month</span>
+        </div>
+
+        @if (spendingByCategory().length === 0) {
+          <div class="empty-state">
+            <mat-icon>donut_large</mat-icon>
+            <p>No spending data yet</p>
+          </div>
+        } @else {
+          <div class="spending-list">
+            @for (item of spendingByCategory(); track item.category; let i = $index) {
+              <div class="spending-item">
+                <div class="si-icon" [style.background]="item.color + '15'" [style.border-color]="item.color + '25'">
+                  <mat-icon [style.color]="item.color">{{ item.icon }}</mat-icon>
+                </div>
+                <div class="si-meta">
+                  <div class="si-top-row">
+                    <span class="si-cat">{{ item.category | titlecase }}</span>
+                    <span class="si-amount">{{ fmt(item.amount) }}</span>
+                  </div>
+                  <div class="si-bar-track">
+                    <div
+                      class="si-bar-fill animate-bar"
+                      [style.width.%]="item.percentage"
+                      [style.background]="item.color"
+                      [style.animation-delay]="(i * 0.08) + 's'"
+                    ></div>
+                  </div>
+                  <span class="si-pct">{{ item.percentage }}% of spending</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <mat-divider style="margin: 20px 0 16px" />
+
+        <!-- Income vs Expenses comparison -->
+        <div class="compare-section">
+          <div class="cmp-row">
+            <div class="cmp-dot green"></div>
+            <span class="cmp-label">Income</span>
+            <span class="cmp-val green">{{ fmt(monthlyStats().income) }}</span>
+          </div>
+          <div class="cmp-bar-track">
+            <div class="cmp-bar-fill green animate-bar" style="width: 100%"></div>
+          </div>
+
+          <div class="cmp-row">
+            <div class="cmp-dot red"></div>
+            <span class="cmp-label">Expenses</span>
+            <span class="cmp-val red">{{ fmt(monthlyStats().expenses) }}</span>
+          </div>
+          <div class="cmp-bar-track">
+            <div
+              class="cmp-bar-fill red animate-bar"
+              [style.width.%]="monthlyStats().income > 0 ? (monthlyStats().expenses / monthlyStats().income * 100) : 0"
+              style="animation-delay: 0.1s"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

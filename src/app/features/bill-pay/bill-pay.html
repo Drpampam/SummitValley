@@ -1,0 +1,190 @@
+<div class="bp-page">
+
+  <!-- Header -->
+  <div class="bp-header">
+    <div class="bp-header-left">
+      <div class="bp-header-icon"><mat-icon>payments</mat-icon></div>
+      <div>
+        <h2 class="bp-title">Bill Pay</h2>
+        <p class="bp-sub">Pay bills, manage autopay, and view payment history</p>
+      </div>
+    </div>
+    <div class="bp-header-stats">
+      <div class="bp-stat">
+        <p class="bp-stat-label">Scheduled</p>
+        <p class="bp-stat-val">{{ scheduled().length }}</p>
+      </div>
+      <div class="bp-stat-div"></div>
+      <div class="bp-stat">
+        <p class="bp-stat-label">Billers</p>
+        <p class="bp-stat-val">{{ billers().length }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab toggle -->
+  <div class="bp-tabs">
+    <button class="bp-tab" [class.active]="activeTab()==='billers'" (click)="setTab('billers')">
+      <mat-icon>list</mat-icon> My Billers
+    </button>
+    <button class="bp-tab" [class.active]="activeTab()==='pay'" (click)="setTab('pay')">
+      <mat-icon>add_circle_outline</mat-icon> Pay a Bill
+    </button>
+    <button class="bp-tab" [class.active]="activeTab()==='history'" (click)="setTab('history')">
+      <mat-icon>history</mat-icon> History
+    </button>
+  </div>
+
+  <!-- ── BILLERS TAB ─────────────────────────────────────── -->
+  @if (activeTab() === 'billers') {
+    <div class="bp-billers-grid">
+      @for (b of billers(); track b.id) {
+        <div class="bp-biller-card">
+          <div class="bp-biller-icon-wrap">
+            <mat-icon>{{ b.logoIcon }}</mat-icon>
+          </div>
+          <div class="bp-biller-info">
+            <p class="bp-biller-name">{{ b.name }}</p>
+            <p class="bp-biller-acct">Acct: {{ b.accountNumber }}</p>
+            @if (b.defaultAmount) {
+              <p class="bp-biller-amt">{{ currency() }}{{ b.defaultAmount | number:'1.2-2' }} typical</p>
+            }
+          </div>
+          <div class="bp-biller-actions">
+            <span class="bp-autopay-badge" [class.active]="b.autopay" (click)="toggleAutopay(b.id, $event)" matTooltip="Toggle autopay">
+              <mat-icon>{{ b.autopay ? 'autorenew' : 'pause_circle' }}</mat-icon>
+              {{ b.autopay ? 'Autopay On' : 'Autopay Off' }}
+            </span>
+            <button class="bp-pay-btn" mat-flat-button (click)="payNow(b)">
+              <mat-icon>send</mat-icon> Pay Now
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── PAY A BILL TAB ──────────────────────────────────── -->
+  @if (activeTab() === 'pay') {
+    <div class="bp-pay-form-wrap">
+      <form [formGroup]="form" (ngSubmit)="submit()" class="bp-pay-form">
+        <h3 class="bp-form-title">Schedule a Payment</h3>
+
+        <mat-form-field appearance="outline" class="bp-field">
+          <mat-label>Biller</mat-label>
+          <mat-select formControlName="billerId" (selectionChange)="onBillerChange($event.value)">
+            @for (b of billers(); track b.id) {
+              <mat-option [value]="b.id">
+                <mat-icon style="vertical-align:middle;margin-right:6px;font-size:16px">{{ b.logoIcon }}</mat-icon>
+                {{ b.name }}
+              </mat-option>
+            }
+          </mat-select>
+          @if (form.get('billerId')?.invalid && form.get('billerId')?.touched) {
+            <mat-error>Select a biller</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="bp-field">
+          <mat-label>Pay From</mat-label>
+          <mat-select formControlName="fromAccountId">
+            @for (a of accounts(); track a.id) {
+              <mat-option [value]="a.id">
+                {{ a.type === 'checking' ? 'Checking' : 'Savings' }} {{ a.accountNumber }} — {{ currency() }}{{ a.balance | number:'1.2-2' }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <div class="bp-row">
+          <mat-form-field appearance="outline" class="bp-field">
+            <mat-label>Amount</mat-label>
+            <span matTextPrefix>{{ currency() }}&nbsp;</span>
+            <input matInput type="number" step="0.01" formControlName="amount" placeholder="0.00" />
+            @if (form.get('amount')?.invalid && form.get('amount')?.touched) {
+              <mat-error>Enter a valid amount</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="bp-field">
+            <mat-label>Payment Date</mat-label>
+            <input matInput type="date" formControlName="scheduledDate" />
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="bp-field">
+          <mat-label>Memo (optional)</mat-label>
+          <input matInput formControlName="memo" placeholder="e.g. April bill" />
+        </mat-form-field>
+
+        <div class="bp-form-actions">
+          <button type="button" mat-stroked-button (click)="setTab('billers')">Cancel</button>
+          <button type="submit" mat-flat-button class="bp-submit-btn" [disabled]="submitting()">
+            @if (submitting()) { <mat-spinner diameter="18" style="margin-right:8px"></mat-spinner> }
+            @if (!submitting()) { <mat-icon>send</mat-icon> }
+            {{ submitting() ? 'Processing…' : 'Submit Payment' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- ── HISTORY TAB ─────────────────────────────────────── -->
+  @if (activeTab() === 'history') {
+    <!-- Scheduled first -->
+    @if (scheduled().length) {
+      <div class="bp-section-label">
+        <mat-icon>schedule</mat-icon> Upcoming Payments
+      </div>
+      <div class="bp-history-list">
+        @for (p of scheduled(); track p.id) {
+          <div class="bp-history-row">
+            <div class="bp-hist-icon"><mat-icon>schedule</mat-icon></div>
+            <div class="bp-hist-info">
+              <p class="bp-hist-name">{{ p.billerName }}</p>
+              <p class="bp-hist-date">Scheduled: {{ p.scheduledDate | date:'MMM d, y' }}</p>
+            </div>
+            <div class="bp-hist-right">
+              <p class="bp-hist-amt">{{ currency() }}{{ p.amount | number:'1.2-2' }}</p>
+              <span class="bp-status status-pending">Scheduled</span>
+              <button mat-icon-button class="bp-cancel-btn" matTooltip="Cancel payment" (click)="cancelPayment(p.id)">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="bp-section-label">
+      <mat-icon>history</mat-icon> Payment History
+    </div>
+    @if (history().length === 0) {
+      <div class="bp-empty">
+        <mat-icon>receipt_long</mat-icon>
+        <p>No payment history yet.</p>
+      </div>
+    } @else {
+      <div class="bp-history-list">
+        @for (p of history(); track p.id) {
+          <div class="bp-history-row">
+            <div class="bp-hist-icon" [class]="'cat-' + p.status">
+              <mat-icon>{{ p.status === 'paid' ? 'check_circle' : p.status === 'failed' ? 'error' : 'cancel' }}</mat-icon>
+            </div>
+            <div class="bp-hist-info">
+              <p class="bp-hist-name">{{ p.billerName }}</p>
+              <p class="bp-hist-date">{{ (p.paidDate || p.scheduledDate) | date:'MMM d, y' }}</p>
+              @if (p.confirmationCode) {
+                <p class="bp-hist-conf">Conf: {{ p.confirmationCode }}</p>
+              }
+            </div>
+            <div class="bp-hist-right">
+              <p class="bp-hist-amt">{{ currency() }}{{ p.amount | number:'1.2-2' }}</p>
+              <span class="bp-status" [class]="statusClass(p.status)">{{ p.status | titlecase }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

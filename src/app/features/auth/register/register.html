@@ -1,0 +1,178 @@
+<div class="auth-layout">
+  <!-- ── Left Brand Panel ───────────────────────────────── -->
+  <div class="brand-panel">
+    <div class="brand-content">
+      <div class="brand-logo">
+        <div class="brand-logo-mark">
+          <mat-icon>account_balance</mat-icon>
+        </div>
+        <span class="brand-logo-name">Summit Valley Bank</span>
+      </div>
+
+      <div class="brand-hero">
+        <h2 class="brand-headline">Join 500,000+<br/>smart savers.</h2>
+        <p class="brand-subline">Open your account in minutes. Available in the United States and United Kingdom.</p>
+      </div>
+
+      <div class="brand-steps">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>Create your account</strong>
+            <span>Takes less than 2 minutes</span>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>Verify your identity</strong>
+            <span>Quick and secure process</span>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>Start banking</strong>
+            <span>Instant access to all features</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="brand-footer">Regulated by the FCA (UK) &amp; FDIC insured (US)</p>
+  </div>
+
+  <!-- ── Right Form Panel ──────────────────────────────── -->
+  <div class="form-panel">
+    <div class="form-wrapper">
+      <div class="form-header">
+        <h1 class="form-title">Create account</h1>
+        <p class="form-subtitle">Start banking smarter today — it's free</p>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+        <div class="name-row">
+          <div class="field-group">
+            <label class="field-label">First Name</label>
+            <mat-form-field appearance="outline" class="full-width">
+              <input matInput formControlName="firstName" placeholder="e.g. Alexandra" autocomplete="given-name" />
+              @if (form.get('firstName')?.hasError('required') && form.get('firstName')?.touched) {
+                <mat-error>Required</mat-error>
+              }
+            </mat-form-field>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Last Name</label>
+            <mat-form-field appearance="outline" class="full-width">
+              <input matInput formControlName="lastName" placeholder="e.g. Johnson" autocomplete="family-name" />
+              @if (form.get('lastName')?.hasError('required') && form.get('lastName')?.touched) {
+                <mat-error>Required</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Email address</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput type="email" formControlName="email" placeholder="your.name@example.com" autocomplete="email" />
+            <mat-icon matSuffix>mail_outline</mat-icon>
+            @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+              <mat-error>Please enter a valid email</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="two-col">
+          <div class="field-group">
+            <label class="field-label">Phone Number</label>
+            <mat-form-field appearance="outline" class="full-width">
+              <input matInput type="tel" formControlName="phone" placeholder="+1 (555) 000-0000" autocomplete="tel" />
+              <mat-icon matSuffix>phone</mat-icon>
+            </mat-form-field>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Country</label>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-select formControlName="country">
+                @for (c of countries; track c.value) {
+                  <mat-option [value]="c.value">{{ c.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Password</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input
+              matInput
+              [type]="hidePassword() ? 'password' : 'text'"
+              formControlName="password"
+              placeholder="Create a strong password (min. 8 characters)"
+            />
+            <button mat-icon-button matSuffix type="button" (click)="hidePassword.set(!hidePassword())">
+              <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (form.get('password')?.hasError('minlength') && form.get('password')?.touched) {
+              <mat-error>Minimum 8 characters</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Confirm Password</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input
+              matInput
+              [type]="hideConfirm() ? 'password' : 'text'"
+              formControlName="confirmPassword"
+              placeholder="Re-enter your password to confirm"
+            />
+            <button mat-icon-button matSuffix type="button" (click)="hideConfirm.set(!hideConfirm())">
+              <mat-icon>{{ hideConfirm() ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (form.get('confirmPassword')?.hasError('passwordMismatch') && form.get('confirmPassword')?.touched) {
+              <mat-error>Passwords do not match</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        @if (error()) {
+          <div class="error-alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ error() }}</span>
+          </div>
+        }
+
+        <button
+          mat-flat-button
+          type="submit"
+          class="submit-btn"
+          [disabled]="form.invalid || loading()"
+        >
+          @if (loading()) {
+            <mat-spinner diameter="20" />
+            <span>Creating account…</span>
+          } @else {
+            <ng-container>
+              <span>Create Account</span>
+              <mat-icon>arrow_forward</mat-icon>
+            </ng-container>
+          }
+        </button>
+      </form>
+
+      <p class="signup-cta">
+        Already have an account? <a routerLink="/auth/login">Sign in</a>
+      </p>
+
+      <p class="terms-note">
+        By creating an account you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+      </p>
+    </div>
+  </div>
+</div>

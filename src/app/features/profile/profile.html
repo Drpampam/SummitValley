@@ -1,0 +1,365 @@
+<div class="profile-page">
+
+  <!-- ── Profile Hero ─────────────────────────────────────────────────────── -->
+  <div class="profile-hero">
+
+    <!-- Avatar with upload overlay -->
+    <div class="ph-avatar-wrap">
+      <div class="ph-avatar" [class.has-photo]="avatarUrl()">
+        @if (avatarLoading()) {
+          <mat-spinner diameter="36" />
+        } @else if (avatarUrl()) {
+          <img [src]="avatarUrl()" class="avatar-img" alt="Profile photo" />
+        } @else {
+          <span>{{ userInitials }}</span>
+        }
+        <!-- Hover overlay to trigger upload -->
+        <div class="avatar-overlay" (click)="triggerAvatarUpload()" matTooltip="Change photo">
+          <mat-icon>photo_camera</mat-icon>
+          <span>Change</span>
+        </div>
+      </div>
+      <!-- Hidden file input -->
+      <input
+        #avatarInput
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        style="display:none"
+        (change)="onFileSelected($event)"
+      />
+    </div>
+
+    <div class="ph-info">
+      <h2 class="ph-name">{{ auth.user()?.firstName }} {{ auth.user()?.lastName }}</h2>
+      <p class="ph-email">{{ auth.user()?.email }}</p>
+      <div class="ph-badges">
+        <span class="ph-badge verified">
+          <mat-icon>verified</mat-icon> Verified Account
+        </span>
+        <span class="ph-badge region">
+          {{ localeService.isUK() ? '🇬🇧 UK Account' : localeService.isEU() ? '🇪🇺 EU Account' : '🇺🇸 US Account' }}
+        </span>
+        <span class="ph-badge member">
+          Member since {{ auth.user()?.createdAt | date: 'MMMM yyyy' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Photo action buttons -->
+    <div class="ph-photo-actions">
+      <button mat-stroked-button class="edit-photo-btn" (click)="triggerAvatarUpload()" [disabled]="avatarLoading()">
+        <mat-icon>photo_camera</mat-icon>
+        {{ avatarUrl() ? 'Change Photo' : 'Upload Photo' }}
+      </button>
+      @if (avatarUrl()) {
+        <button mat-icon-button class="remove-photo-btn" (click)="removeAvatar()" matTooltip="Remove photo">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      }
+    </div>
+
+  </div>
+
+  <!-- ── Tab Navigation ───────────────────────────────────────────────────── -->
+  <div class="profile-tabs-nav">
+    @for (tab of tabs; track tab.id) {
+      <button
+        class="ptab"
+        [class.active]="activeTab() === tab.id"
+        (click)="activeTab.set(tab.id)"
+      >
+        <mat-icon>{{ tab.icon }}</mat-icon>
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  <!-- ── Personal Info ────────────────────────────────────────────────────── -->
+  @if (activeTab() === 'personal') {
+    <form [formGroup]="personalForm" (ngSubmit)="savePersonal()" class="profile-form-card">
+      <div class="pfc-header">
+        <h3 class="pfc-title">Personal Information</h3>
+        <p class="pfc-sub">Keep your personal details accurate and up to date</p>
+      </div>
+
+      <div class="two-col">
+        <div class="field-group">
+          <label class="field-label">First Name</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput formControlName="firstName" placeholder="e.g. Alexandra" autocomplete="given-name" />
+            @if (personalForm.get('firstName')?.hasError('required') && personalForm.get('firstName')?.touched) {
+              <mat-error>First name is required</mat-error>
+            }
+          </mat-form-field>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Last Name</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput formControlName="lastName" placeholder="e.g. Johnson" autocomplete="family-name" />
+            @if (personalForm.get('lastName')?.hasError('required') && personalForm.get('lastName')?.touched) {
+              <mat-error>Last name is required</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field-group">
+          <label class="field-label">Email Address</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput type="email" formControlName="email" placeholder="your.name@example.com" autocomplete="email" />
+            <mat-icon matSuffix>mail_outline</mat-icon>
+            @if (personalForm.get('email')?.hasError('email') && personalForm.get('email')?.touched) {
+              <mat-error>Enter a valid email address</mat-error>
+            }
+          </mat-form-field>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Phone Number</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput type="tel" formControlName="phone" placeholder="+1 (555) 000-0000" autocomplete="tel" />
+            <mat-icon matSuffix>phone</mat-icon>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Street Address</label>
+        <mat-form-field appearance="outline" class="full-width">
+          <input matInput formControlName="address" placeholder="e.g. 123 Oak Avenue, Apt 4B" autocomplete="street-address" />
+          <mat-icon matSuffix>home</mat-icon>
+        </mat-form-field>
+      </div>
+
+      <div class="three-col">
+        <div class="field-group">
+          <label class="field-label">City</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput formControlName="city" placeholder="e.g. New York" autocomplete="address-level2" />
+          </mat-form-field>
+        </div>
+        <div class="field-group">
+          <label class="field-label">{{ localeService.isUK() || localeService.isEU() ? 'County / Region' : 'State' }}</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput formControlName="state" [placeholder]="localeService.isUK() || localeService.isEU() ? 'e.g. Greater London' : 'e.g. New York'" autocomplete="address-level1" />
+          </mat-form-field>
+        </div>
+        <div class="field-group">
+          <label class="field-label">{{ localeService.isUK() || localeService.isEU() ? 'Postcode' : 'ZIP Code' }}</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput formControlName="zip" [placeholder]="localeService.isUK() || localeService.isEU() ? 'e.g. SW1A 1AA' : 'e.g. 10001'" autocomplete="postal-code" />
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="field-group" style="max-width: 240px">
+        <label class="field-label">Country</label>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-select formControlName="country">
+            @for (c of countries; track c.value) {
+              <mat-option [value]="c.value">{{ c.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="form-actions">
+        <button mat-stroked-button type="button" class="cancel-btn" (click)="cancelPersonal()" [disabled]="saving()">
+          Cancel
+        </button>
+        <button mat-flat-button class="save-btn" type="submit" [disabled]="personalForm.invalid || saving()">
+          @if (saving()) {
+            <mat-spinner diameter="16" />
+            <span>Saving…</span>
+          } @else {
+            <ng-container>
+              <mat-icon>check</mat-icon>
+              <span>Save Changes</span>
+            </ng-container>
+          }
+        </button>
+      </div>
+    </form>
+  }
+
+  <!-- ── Security ─────────────────────────────────────────────────────────── -->
+  @if (activeTab() === 'security') {
+    <div class="profile-form-card">
+      <div class="pfc-header">
+        <h3 class="pfc-title">Change Password</h3>
+        <p class="pfc-sub">Use a strong password you don't reuse elsewhere</p>
+      </div>
+
+      <form [formGroup]="passwordForm" (ngSubmit)="savePassword()" class="pw-form">
+        <div class="field-group" style="max-width: 400px">
+          <label class="field-label">Current Password</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput [type]="hideCurrentPw() ? 'password' : 'text'" formControlName="currentPassword" placeholder="Your current password" />
+            <button mat-icon-button matSuffix type="button" (click)="hideCurrentPw.set(!hideCurrentPw())" matTooltip="Toggle visibility">
+              <mat-icon>{{ hideCurrentPw() ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (passwordForm.get('currentPassword')?.hasError('required') && passwordForm.get('currentPassword')?.touched) {
+              <mat-error>Current password is required</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="two-col" style="max-width: 640px">
+          <div class="field-group">
+            <label class="field-label">New Password</label>
+            <mat-form-field appearance="outline" class="full-width">
+              <input matInput [type]="hideNewPw() ? 'password' : 'text'" formControlName="newPassword" placeholder="Min. 8 characters" />
+              <button mat-icon-button matSuffix type="button" (click)="hideNewPw.set(!hideNewPw())" matTooltip="Toggle visibility">
+                <mat-icon>{{ hideNewPw() ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+              @if (passwordForm.get('newPassword')?.hasError('minlength') && passwordForm.get('newPassword')?.touched) {
+                <mat-error>Minimum 8 characters required</mat-error>
+              }
+            </mat-form-field>
+            <!-- Strength meter -->
+            @if (passwordForm.get('newPassword')?.value) {
+              <div class="pw-strength">
+                <div class="pw-strength-bar">
+                  <div class="pw-strength-fill" [style.width.%]="passwordStrength.width" [style.background]="passwordStrength.color"></div>
+                </div>
+                <span class="pw-strength-label" [style.color]="passwordStrength.color">{{ passwordStrength.label }}</span>
+              </div>
+              <p class="pw-hint">Use uppercase, numbers &amp; special characters for a stronger password.</p>
+            }
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Confirm New Password</label>
+            <mat-form-field appearance="outline" class="full-width">
+              <input matInput [type]="hideConfirmPw() ? 'password' : 'text'" formControlName="confirmPassword" placeholder="Repeat new password" />
+              <button mat-icon-button matSuffix type="button" (click)="hideConfirmPw.set(!hideConfirmPw())" matTooltip="Toggle visibility">
+                <mat-icon>{{ hideConfirmPw() ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+            </mat-form-field>
+            @if (passwordMismatch) {
+              <p class="pw-mismatch">
+                <mat-icon>error_outline</mat-icon> Passwords do not match
+              </p>
+            } @else if (passwordForm.get('confirmPassword')?.value && !passwordMismatch) {
+              <p class="pw-match">
+                <mat-icon>check_circle</mat-icon> Passwords match
+              </p>
+            }
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button mat-flat-button class="save-btn" type="submit" [disabled]="passwordForm.invalid || passwordMismatch || saving()">
+            @if (saving()) {
+              <mat-spinner diameter="16" />
+              <span>Updating…</span>
+            } @else {
+              <ng-container>
+                <mat-icon>lock</mat-icon>
+                <span>Update Password</span>
+              </ng-container>
+            }
+          </button>
+        </div>
+      </form>
+
+      <mat-divider class="section-divider" />
+
+      <!-- 2FA ────────────────────────────────────────────────────────────── -->
+      <div class="pfc-header" style="margin-top: 0">
+        <h3 class="pfc-title">Two-Factor Authentication</h3>
+        <p class="pfc-sub">Add an extra layer of security to your account</p>
+      </div>
+      <div class="tfa-row">
+        <div class="tfa-icon">
+          <mat-icon>smartphone</mat-icon>
+        </div>
+        <div class="tfa-info">
+          <p class="tfa-title">Authenticator App</p>
+          <p class="tfa-sub">Use Google Authenticator or Authy for one-time codes</p>
+        </div>
+        <span class="tfa-status" [class.enabled]="tfaEnabled()" [class.disabled]="!tfaEnabled()">
+          {{ tfaEnabled() ? 'Enabled' : 'Not enabled' }}
+        </span>
+        <button mat-stroked-button class="tfa-btn" (click)="toggleTfa()">
+          <mat-icon>{{ tfaEnabled() ? 'lock_open' : 'lock' }}</mat-icon>
+          {{ tfaEnabled() ? 'Disable' : 'Enable' }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── Notifications ────────────────────────────────────────────────────── -->
+  @if (activeTab() === 'notifications') {
+    <form [formGroup]="notificationForm" class="profile-form-card">
+      <div class="pfc-header">
+        <h3 class="pfc-title">Notification Preferences</h3>
+        <p class="pfc-sub">Choose how and when you want to be notified</p>
+      </div>
+
+      <div class="notif-list">
+        @for (item of notifItems; track item.key) {
+          <div class="notif-row">
+            <div class="notif-row-icon" [style.background]="item.color + '18'">
+              <mat-icon [style.color]="item.color">{{ item.icon }}</mat-icon>
+            </div>
+            <div class="notif-row-info">
+              <p class="nr-title">{{ item.label }}</p>
+              <p class="nr-sub">{{ item.description }}</p>
+            </div>
+            <mat-slide-toggle [formControlName]="item.key" color="primary" />
+          </div>
+        }
+      </div>
+
+      <div class="form-actions">
+        <button mat-flat-button class="save-btn" type="button" (click)="saveNotifications()" [disabled]="saving()">
+          @if (saving()) {
+            <mat-spinner diameter="16" />
+            <span>Saving…</span>
+          } @else {
+            <ng-container>
+              <mat-icon>check</mat-icon>
+              <span>Save Preferences</span>
+            </ng-container>
+          }
+        </button>
+      </div>
+    </form>
+  }
+
+  <!-- ── Preferences ──────────────────────────────────────────────────────── -->
+  @if (activeTab() === 'preferences') {
+    <div class="profile-form-card">
+      <div class="pfc-header">
+        <h3 class="pfc-title">Region &amp; Currency</h3>
+        <p class="pfc-sub">Set your preferred region to display the correct currency and date formats</p>
+      </div>
+
+      <div class="locale-grid">
+        @for (loc of locales; track loc.value) {
+          <div
+            class="locale-option"
+            [class.selected]="localeService.locale() === loc.value"
+            (click)="onLocaleChange(loc.value)"
+          >
+            <span class="lo-flag">{{ loc.flag }}</span>
+            <div class="lo-info">
+              <p class="lo-name">{{ loc.name }}</p>
+              <p class="lo-detail">{{ loc.currency }} · {{ loc.format }}</p>
+            </div>
+            @if (localeService.locale() === loc.value) {
+              <div class="lo-check"><mat-icon>check_circle</mat-icon></div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="locale-hint">
+        <mat-icon>info_outline</mat-icon>
+        <p>Changing your region updates currency symbols, date formats, and banking terminology throughout the app instantly — no reload required.</p>
+      </div>
+    </div>
+  }
+
+</div>

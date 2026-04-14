@@ -1,0 +1,624 @@
+<div class="admin-page">
+
+  <!-- ── Header Banner ──────────────────────────────────────────────────────── -->
+  <div class="admin-banner">
+    <div class="admin-banner-left">
+      <div class="admin-banner-icon">
+        <mat-icon>admin_panel_settings</mat-icon>
+      </div>
+      <div>
+        <h2 class="admin-banner-title">Admin Console</h2>
+        <p class="admin-banner-sub">Full system access — manage users, accounts, and transaction statuses</p>
+      </div>
+    </div>
+    <div class="admin-banner-right">
+      <div class="db-status-pill">
+        <span class="db-dot"></span>
+        <mat-icon>storage</mat-icon>
+        <span>localStorage DB</span>
+      </div>
+      <div class="admin-role-pill">
+        <mat-icon>verified_user</mat-icon>
+        <span>Super Admin</span>
+      </div>
+      <button mat-stroked-button class="reset-db-btn" (click)="resetDatabase()" matTooltip="Reset all records to seed data">
+        <mat-icon>restart_alt</mat-icon>
+        Reset DB
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Stats Ribbon ────────────────────────────────────────────────────────── -->
+  <div class="stats-ribbon">
+    <div class="stat-card">
+      <div class="stat-icon users"><mat-icon>group</mat-icon></div>
+      <div class="stat-info">
+        <p class="stat-label">Total Customers</p>
+        <p class="stat-value">{{ stats().totalUsers }}</p>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-card">
+      <div class="stat-icon accounts"><mat-icon>account_balance_wallet</mat-icon></div>
+      <div class="stat-info">
+        <p class="stat-label">Total Accounts</p>
+        <p class="stat-value">{{ stats().totalAccounts }}</p>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-card">
+      <div class="stat-icon warning"><mat-icon>pending_actions</mat-icon></div>
+      <div class="stat-info">
+        <p class="stat-label">Pending Txns</p>
+        <p class="stat-value warn">{{ stats().pending }}</p>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-card">
+      <div class="stat-icon danger"><mat-icon>error_outline</mat-icon></div>
+      <div class="stat-info">
+        <p class="stat-label">Failed Txns</p>
+        <p class="stat-value danger">{{ stats().failed }}</p>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-card">
+      <div class="stat-icon credit"><mat-icon>trending_up</mat-icon></div>
+      <div class="stat-info">
+        <p class="stat-label">Total Credits (USD)</p>
+        <p class="stat-value green">{{ fmtAmount(stats().volume, 'USD') }}</p>
+      </div>
+    </div>
+    <div class="stat-spacer"></div>
+    <div class="stat-managers">
+      <mat-icon>badge</mat-icon>
+      <span>{{ allManagers.length }} Account Managers</span>
+    </div>
+  </div>
+
+  <!-- ── Tabs ────────────────────────────────────────────────────────────────── -->
+  <mat-tab-group class="admin-tabs" animationDuration="200ms">
+
+    <!-- ── Tab 1: Customers ──────────────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">group</mat-icon>
+        Customers
+      </ng-template>
+
+      <div class="tab-body">
+        <div class="section-card">
+          <table mat-table [dataSource]="allUsers" class="admin-table">
+
+            <!-- # -->
+            <ng-container matColumnDef="index">
+              <th mat-header-cell *matHeaderCellDef>#</th>
+              <td mat-cell *matCellDef="let user; let i = index">{{ i + 1 }}</td>
+            </ng-container>
+
+            <!-- Name -->
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Customer</th>
+              <td mat-cell *matCellDef="let user">
+                <div class="user-cell">
+                  <div class="user-avatar">{{ user.firstName[0] }}{{ user.lastName[0] }}</div>
+                  <div>
+                    <p class="user-name">{{ user.firstName }} {{ user.lastName }}</p>
+                    <p class="user-country">{{ user.country === 'GB' ? '🇬🇧 United Kingdom' : '🇺🇸 United States' }}</p>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Email -->
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef>Email</th>
+              <td mat-cell *matCellDef="let user">
+                <span class="mono-text">{{ user.email }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Joined -->
+            <ng-container matColumnDef="joined">
+              <th mat-header-cell *matHeaderCellDef>Member Since</th>
+              <td mat-cell *matCellDef="let user" class="date-cell">
+                {{ user.createdAt | date:'MMM d, yyyy' }}
+              </td>
+            </ng-container>
+
+            <!-- Manager -->
+            <ng-container matColumnDef="manager">
+              <th mat-header-cell *matHeaderCellDef>Account Manager</th>
+              <td mat-cell *matCellDef="let user">
+                @if (getManagerForUser(user.id); as mgr) {
+                  <div class="manager-cell">
+                    <div class="mgr-dot"></div>
+                    <span>{{ mgr.firstName }} {{ mgr.lastName }}</span>
+                  </div>
+                } @else {
+                  <span class="no-manager">Unassigned</span>
+                }
+              </td>
+            </ng-container>
+
+            <!-- Accounts -->
+            <ng-container matColumnDef="accounts">
+              <th mat-header-cell *matHeaderCellDef>Accounts</th>
+              <td mat-cell *matCellDef="let user">
+                <div class="accounts-cell">
+                  @for (acc of getAccountsByUserId(user.id); track acc.id) {
+                    <span class="acc-pill">{{ acc.type | titlecase }}</span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Balance -->
+            <ng-container matColumnDef="balance">
+              <th mat-header-cell *matHeaderCellDef>Total Balance</th>
+              <td mat-cell *matCellDef="let user">
+                <span class="balance-val">{{ getUserBalance(user.id) }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Actions -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let user">
+                <button
+                  mat-stroked-button
+                  class="add-funds-btn"
+                  (click)="depositUserId() === user.id ? closeDepositPanel() : openDepositPanel(user.id)"
+                  matTooltip="Add funds to this customer's account"
+                >
+                  <mat-icon>add_circle_outline</mat-icon>
+                  Add Funds
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="userCols"></tr>
+            <tr mat-row *matRowDef="let row; columns: userCols;" class="admin-row"></tr>
+          </table>
+
+          <!-- ── Deposit Panel ──────────────────────────────────────────── -->
+          @if (depositUserId()) {
+            <div class="deposit-panel">
+              <div class="deposit-panel-head">
+                <mat-icon class="deposit-panel-icon">savings</mat-icon>
+                <div>
+                  <p class="deposit-panel-title">Add Funds</p>
+                  <p class="deposit-panel-sub">Depositing into <strong>{{ getDepositUserName() }}</strong></p>
+                </div>
+                <button mat-icon-button class="deposit-panel-close" (click)="closeDepositPanel()">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <div class="deposit-panel-body">
+                <div class="deposit-field-group">
+                  <label class="deposit-field-label">Target Account</label>
+                  <select
+                    class="deposit-select"
+                    [value]="depositAccountId()"
+                    (change)="depositAccountId.set($any($event.target).value)"
+                  >
+                    @for (acc of getAccountsByUserId(depositUserId()!); track acc.id) {
+                      <option [value]="acc.id">
+                        {{ acc.type | titlecase }} · {{ acc.accountNumber }} — {{ fmtAmount(acc.balance, acc.currency) }}
+                      </option>
+                    }
+                  </select>
+                </div>
+
+                <div class="deposit-row">
+                  <div class="deposit-field-group">
+                    <label class="deposit-field-label">Amount</label>
+                    <div class="deposit-amount-wrap">
+                      <span class="deposit-sym">{{ getDepositCurrencySymbol() }}</span>
+                      <input
+                        class="deposit-amount-input"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="0.00"
+                        [value]="depositAmount()"
+                        (input)="depositAmount.set($any($event.target).value)"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="deposit-field-group">
+                    <label class="deposit-field-label">Note <span class="deposit-opt">(optional)</span></label>
+                    <input
+                      class="deposit-note-input"
+                      type="text"
+                      placeholder="e.g. Account opening bonus, correction…"
+                      [value]="depositNote()"
+                      (input)="depositNote.set($any($event.target).value)"
+                    />
+                  </div>
+                </div>
+
+                <div class="deposit-actions">
+                  <button mat-stroked-button (click)="closeDepositPanel()">Cancel</button>
+                  <button mat-flat-button class="deposit-confirm-btn" (click)="submitAdminDeposit()">
+                    <mat-icon>add</mat-icon>
+                    Confirm Deposit
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 2: Transactions ────────────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">receipt_long</mat-icon>
+        Transactions
+        @if (stats().pending > 0) {
+          <span class="tab-badge warn">{{ stats().pending }} pending</span>
+        }
+      </ng-template>
+
+      <div class="tab-body">
+        <!-- Filters -->
+        <div class="filter-bar">
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Filter by customer</mat-label>
+            <mat-select [ngModel]="filterUserId()" (ngModelChange)="filterUserId.set($event)">
+              <mat-option value="">All Customers</mat-option>
+              @for (u of allUsers; track u.id) {
+                <mat-option [value]="u.id">{{ u.firstName }} {{ u.lastName }}</mat-option>
+              }
+            </mat-select>
+            <mat-icon matSuffix>person</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Filter by status</mat-label>
+            <mat-select [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
+              <mat-option value="">All Statuses</mat-option>
+              <mat-option value="completed">Completed</mat-option>
+              <mat-option value="pending">Pending</mat-option>
+              <mat-option value="failed">Failed</mat-option>
+            </mat-select>
+            <mat-icon matSuffix>filter_list</mat-icon>
+          </mat-form-field>
+
+          @if (filterUserId() || filterStatus()) {
+            <button mat-stroked-button class="clear-filter-btn" (click)="clearFilters()">
+              <mat-icon>close</mat-icon>
+              Clear
+            </button>
+          }
+
+          <div class="filter-spacer"></div>
+          <p class="filter-count">{{ txnRows().length }} transactions</p>
+        </div>
+
+        <div class="section-card">
+          <table mat-table [dataSource]="txnRows()" class="admin-table txn-table">
+
+            <!-- User -->
+            <ng-container matColumnDef="user">
+              <th mat-header-cell *matHeaderCellDef>Customer</th>
+              <td mat-cell *matCellDef="let txn">
+                <div class="user-cell-sm">
+                  <div class="user-avatar-sm">{{ txn.userName[0] }}</div>
+                  <div>
+                    <p class="user-name-sm">{{ txn.userName }}</p>
+                    <p class="txn-ref">{{ txn.reference ?? txn.id }}</p>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Date -->
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let txn" class="date-cell">
+                {{ txn.date | date:'MMM d, y' }}<br/>
+                <span class="time-text">{{ txn.date | date:'HH:mm' }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Description -->
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>Description</th>
+              <td mat-cell *matCellDef="let txn">
+                <span class="txn-desc">{{ txn.description }}</span>
+                <span class="txn-cat">{{ txn.category | titlecase }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Amount -->
+            <ng-container matColumnDef="amount">
+              <th mat-header-cell *matHeaderCellDef>Amount</th>
+              <td mat-cell *matCellDef="let txn">
+                <span class="amount-val" [class.credit]="txn.type === 'credit'" [class.debit]="txn.type === 'debit'">
+                  {{ txn.type === 'credit' ? '+' : '−' }}{{ fmtAmount(txn.amount, txn.currency) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Type -->
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Type</th>
+              <td mat-cell *matCellDef="let txn">
+                <span class="type-pill" [class]="txn.type">{{ txn.type | titlecase }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Status (editable dropdown) -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let txn">
+                <mat-select
+                  class="status-select"
+                  [ngModel]="txn.status"
+                  [class]="'status-sel-' + txn.status"
+                  (ngModelChange)="onStatusChange(txn.id, $event)"
+                  matTooltip="Change transaction status"
+                >
+                  @for (s of statusOptions; track s) {
+                    <mat-option [value]="s">{{ s | titlecase }}</mat-option>
+                  }
+                </mat-select>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="txnCols; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: txnCols;" class="admin-row"></tr>
+          </table>
+
+          @if (txnRows().length === 0) {
+            <div class="empty-state">
+              <mat-icon>search_off</mat-icon>
+              <p>No transactions match the current filter.</p>
+            </div>
+          }
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 3: Transaction Policies ─────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">policy</mat-icon>
+        Policies
+        @if (stats().activePolicies > 0) {
+          <span class="tab-badge warn">{{ stats().activePolicies }} active</span>
+        }
+      </ng-template>
+
+      <div class="tab-body">
+
+        <!-- Policy Stats + New Button -->
+        <div class="policy-header">
+          <div class="policy-header-info">
+            <div class="policy-stat-chip active">
+              <mat-icon>shield</mat-icon>
+              <span>{{ stats().activePolicies }} Active</span>
+            </div>
+            <div class="policy-stat-chip total">
+              <mat-icon>policy</mat-icon>
+              <span>{{ policySvc.policies().length }} Total Policies</span>
+            </div>
+          </div>
+          @if (!showPolicyForm()) {
+            <button mat-flat-button class="new-policy-btn" (click)="openNewPolicyForm()">
+              <mat-icon>add</mat-icon>
+              New Policy
+            </button>
+          }
+        </div>
+
+        <!-- ── Create / Edit Form ─────────────────────────────────────────── -->
+        @if (showPolicyForm()) {
+          <div class="policy-form-card">
+            <div class="pfc-head">
+              <div class="pfc-head-left">
+                <div class="pfc-head-icon">
+                  <mat-icon>{{ editingPolicyId() ? 'edit' : 'add_circle' }}</mat-icon>
+                </div>
+                <div>
+                  <h3 class="pfc-title">{{ editingPolicyId() ? 'Edit Policy' : 'New Transaction Policy' }}</h3>
+                  <p class="pfc-sub">Policies are inactive by default — toggle them on after creation.</p>
+                </div>
+              </div>
+              <button mat-icon-button (click)="cancelPolicyForm()" matTooltip="Cancel">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
+            <form [formGroup]="policyForm" (ngSubmit)="savePolicy()" class="policy-form-body">
+              <div class="pf-two-col">
+                <div class="pf-field">
+                  <label class="pf-label">Policy Name <span class="req">*</span></label>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <input matInput formControlName="name" placeholder="e.g. Block high-value wire transfers" />
+                    <mat-icon matSuffix>label</mat-icon>
+                  </mat-form-field>
+                </div>
+
+                <div class="pf-field">
+                  <label class="pf-label">Target Customer</label>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-select formControlName="targetUserId">
+                      <mat-option value="">All Customers (Global)</mat-option>
+                      @for (u of allUsers; track u.id) {
+                        <mat-option [value]="u.id">{{ u.firstName }} {{ u.lastName }}</mat-option>
+                      }
+                    </mat-select>
+                    <mat-icon matSuffix>person</mat-icon>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="pf-two-col">
+                <div class="pf-field">
+                  <label class="pf-label">Rule Type <span class="req">*</span></label>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-select formControlName="ruleType">
+                      <mat-option value="block_all_outgoing">Block All Outgoing Transfers</mat-option>
+                      <mat-option value="block_above_amount">Block Transfers Above Amount</mat-option>
+                    </mat-select>
+                    <mat-icon matSuffix>rule</mat-icon>
+                  </mat-form-field>
+                </div>
+
+                @if (policyForm.get('ruleType')?.value === 'block_above_amount') {
+                  <div class="pf-field">
+                    <label class="pf-label">Amount Threshold <span class="req">*</span></label>
+                    <mat-form-field appearance="outline" class="full-width">
+                      <span matPrefix>$ &nbsp;</span>
+                      <input matInput type="number" formControlName="amountThreshold" placeholder="e.g. 10000" min="1" />
+                    </mat-form-field>
+                  </div>
+                }
+              </div>
+
+              <div class="pf-field">
+                <label class="pf-label">Denial Message shown to customer <span class="req">*</span></label>
+                <mat-form-field appearance="outline" class="full-width">
+                  <textarea matInput formControlName="denialMessage" rows="3"
+                    placeholder="e.g. This transfer has been blocked by your account manager. Please contact Summit Valley Bank support for assistance.">
+                  </textarea>
+                  <mat-hint>This message is displayed to the customer when their transfer is declined.</mat-hint>
+                </mat-form-field>
+              </div>
+
+              <div class="pf-actions">
+                <button mat-stroked-button type="button" (click)="cancelPolicyForm()">Cancel</button>
+                <button mat-flat-button class="save-policy-btn" type="submit" [disabled]="policyForm.invalid">
+                  <mat-icon>{{ editingPolicyId() ? 'save' : 'add_circle' }}</mat-icon>
+                  {{ editingPolicyId() ? 'Save Changes' : 'Create Policy' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        }
+
+        <!-- ── Policy List ────────────────────────────────────────────────── -->
+        @if (policySvc.policies().length === 0) {
+          <div class="empty-state">
+            <mat-icon>policy</mat-icon>
+            <p>No policies created yet. Add one to control transaction behaviour.</p>
+          </div>
+        } @else {
+          <div class="policy-list">
+            @for (policy of policySvc.policies(); track policy.id) {
+              <div class="policy-row" [class.policy-enabled]="policy.enabled">
+
+                <div class="policy-row-left">
+                  <div class="policy-rule-icon" [class.danger]="policy.ruleType === 'block_all_outgoing'" [class.warning]="policy.ruleType === 'block_above_amount'">
+                    <mat-icon>{{ ruleTypeIcon(policy.ruleType) }}</mat-icon>
+                  </div>
+
+                  <div class="policy-row-info">
+                    <div class="policy-row-name-row">
+                      <p class="policy-name">{{ policy.name }}</p>
+                      <span class="policy-rule-pill" [class.danger]="policy.ruleType === 'block_all_outgoing'" [class.warning]="policy.ruleType === 'block_above_amount'">
+                        {{ ruleTypeLabel(policy.ruleType) }}
+                      </span>
+                      @if (policy.enabled) {
+                        <span class="policy-active-pill">Active</span>
+                      }
+                    </div>
+
+                    <div class="policy-row-meta">
+                      <span class="policy-meta-item">
+                        <mat-icon>person</mat-icon>
+                        {{ policy.targetUserId ? getUserName(policy.targetUserId) : 'All Customers' }}
+                      </span>
+                      @if (policy.amountThreshold) {
+                        <span class="policy-meta-item">
+                          <mat-icon>attach_money</mat-icon>
+                          Above ${{ policy.amountThreshold | number }}
+                        </span>
+                      }
+                    </div>
+
+                    <p class="policy-denial-preview">
+                      <mat-icon>chat_bubble_outline</mat-icon>
+                      "{{ policy.denialMessage }}"
+                    </p>
+                  </div>
+                </div>
+
+                <div class="policy-row-actions">
+                  <mat-slide-toggle
+                    [checked]="policy.enabled"
+                    (change)="togglePolicy(policy.id)"
+                    color="warn"
+                    [matTooltip]="policy.enabled ? 'Disable policy' : 'Enable policy'"
+                  />
+                  <button mat-icon-button (click)="editPolicy(policy)" matTooltip="Edit policy">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button class="delete-btn" (click)="deletePolicy(policy.id)" matTooltip="Delete policy">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+
+              </div>
+            }
+          </div>
+        }
+
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 4: Account Managers ────────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">badge</mat-icon>
+        Managers
+      </ng-template>
+
+      <div class="tab-body">
+        <div class="managers-grid">
+          @for (mgr of allManagers; track mgr.id) {
+            <div class="manager-card">
+              <div class="mgr-header">
+                <div class="mgr-avatar">{{ mgr.firstName[0] }}{{ mgr.lastName[0] }}</div>
+                <div class="mgr-info">
+                  <p class="mgr-name">{{ mgr.firstName }} {{ mgr.lastName }}</p>
+                  <p class="mgr-email">{{ mgr.email }}</p>
+                  <span class="mgr-badge">Account Manager</span>
+                </div>
+              </div>
+
+              <mat-divider style="margin: 16px 0" />
+
+              <p class="mgr-clients-label">
+                <mat-icon>group</mat-icon>
+                Managed Clients ({{ getManagedUsers(mgr).length }})
+              </p>
+
+              <div class="mgr-clients-list">
+                @for (client of getManagedUsers(mgr); track client.id) {
+                  <div class="client-row">
+                    <div class="client-avatar-sm">{{ client.firstName[0] }}{{ client.lastName[0] }}</div>
+                    <div class="client-info">
+                      <p class="client-name">{{ client.firstName }} {{ client.lastName }}</p>
+                      <p class="client-meta">{{ client.email }} · {{ client.country === 'GB' ? '🇬🇧 UK' : '🇺🇸 US' }}</p>
+                    </div>
+                    <div class="client-balance">{{ getUserBalance(client.id) }}</div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
+
+</div>

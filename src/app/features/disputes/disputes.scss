@@ -1,0 +1,84 @@
+.disputes-page { display: flex; flex-direction: column; gap: 20px; max-width: 1000px; animation: fadeInUp .3s ease-out both; }
+
+// ── Header ─────────────────────────────────────────────────────────────────────
+.dsp-header { display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #660000 0%, #880000 50%, #CC0000 100%); border-radius: var(--nb-radius-xl); padding: 22px 26px; gap: 16px; }
+.dsp-header-left { display: flex; align-items: center; gap: 14px; }
+.dsp-header-icon { width: 48px; height: 48px; border-radius: var(--nb-radius-md); background: rgba(0,0,0,.2); border: 1px solid rgba(255,205,65,.3); display: flex; align-items: center; justify-content: center; mat-icon { color: #FFCD41; font-size: 24px; } }
+.dsp-title { margin: 0 0 4px; font-size: 18px; font-weight: 800; color: #fff; }
+.dsp-sub   { margin: 0; font-size: 12px; color: rgba(255,255,255,.6); }
+.dsp-header-stats { display: flex; align-items: center; gap: 18px; flex-shrink: 0; }
+.dsp-stat { text-align: right; .dsp-stat-label { margin: 0 0 2px; font-size: 11px; color: rgba(255,255,255,.55); text-transform: uppercase; } .dsp-stat-val { margin: 0; font-size: 20px; font-weight: 800; color: #fff; } }
+.dsp-stat-div { width: 1px; height: 36px; background: rgba(255,255,255,.15); }
+
+// ── Tabs ───────────────────────────────────────────────────────────────────────
+.dsp-tabs { display: flex; gap: 4px; background: var(--nb-border-light); padding: 4px; border-radius: var(--nb-radius-md); align-self: flex-start; }
+.dsp-tab {
+  display: flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; background: none;
+  border-radius: var(--nb-radius-sm); font-size: 13px; font-weight: 500; color: var(--nb-text-muted); cursor: pointer; transition: all .15s;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  &.active { background: #fff; color: var(--nb-primary); font-weight: 700; box-shadow: var(--nb-shadow-sm); }
+  &:hover:not(.active) { color: var(--nb-text-secondary); background: rgba(255,255,255,.5); }
+}
+
+// ── Empty state ────────────────────────────────────────────────────────────────
+.dsp-empty { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 60px; color: var(--nb-text-muted); mat-icon { font-size: 52px; width: 52px; height: 52px; opacity: .22; } p { margin: 0; font-size: 14px; } }
+.dsp-cta-btn { background: var(--nb-primary) !important; color: #fff !important; display: flex !important; align-items: center; gap: 6px; mat-icon { font-size: 18px; } }
+
+// ── List ───────────────────────────────────────────────────────────────────────
+.dsp-list { display: flex; flex-direction: column; background: var(--nb-card-bg); border: 1px solid var(--nb-border); border-radius: var(--nb-radius-lg); overflow: hidden; }
+.dsp-row {
+  display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+  border-bottom: 1px solid var(--nb-border-light); transition: background .12s;
+  &:last-child { border-bottom: none; }
+  &:hover { background: var(--nb-primary-pale); }
+}
+.dsp-row-icon {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  &.status-pending  { background: #fef9c3; mat-icon { color: #ca8a04; font-size: 20px; } }
+  &.status-review   { background: #dbeafe; mat-icon { color: #2563eb; font-size: 20px; } }
+  &.status-resolved { background: var(--nb-primary-light); mat-icon { color: var(--nb-primary); font-size: 20px; } }
+  &.status-rejected { background: var(--nb-danger-bg); mat-icon { color: var(--nb-danger); font-size: 20px; } }
+}
+.dsp-row-info  { flex: 1; min-width: 0; }
+.dsp-row-case  { margin: 0 0 2px; font-size: 12px; font-weight: 700; font-family: monospace; color: var(--nb-primary); }
+.dsp-row-txn   { margin: 0 0 3px; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dsp-row-reason { margin: 0; font-size: 11px; color: var(--nb-text-muted); }
+.dsp-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.dsp-row-date  { margin: 0; font-size: 11px; color: var(--nb-text-muted); }
+
+.dsp-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 99px;
+  &.status-pending  { background: #fef9c3; color: #ca8a04; }
+  &.status-review   { background: #dbeafe; color: #2563eb; }
+  &.status-resolved { background: var(--nb-primary-light); color: var(--nb-primary-dark); }
+  &.status-rejected { background: var(--nb-danger-bg); color: var(--nb-danger); }
+}
+
+// ── Form ───────────────────────────────────────────────────────────────────────
+.dsp-form-wrap { background: var(--nb-card-bg); border: 1px solid var(--nb-border); border-radius: var(--nb-radius-lg); padding: 28px; }
+.dsp-form { display: flex; flex-direction: column; gap: 4px; max-width: 600px; }
+.dsp-form-title { margin: 0 0 16px; font-size: 16px; font-weight: 700; }
+.dsp-info-banner {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px;
+  padding: 12px 16px; background: var(--nb-primary-pale); border: 1px solid var(--nb-primary-light); border-radius: var(--nb-radius-sm);
+  font-size: 12px; color: var(--nb-text-secondary); line-height: 1.5;
+  mat-icon { font-size: 17px; color: var(--nb-primary); flex-shrink: 0; margin-top: 1px; }
+}
+.dsp-field { width: 100%; }
+.dsp-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.dsp-submit-btn { background: var(--nb-primary) !important; color: #fff !important; display: flex !important; align-items: center; gap: 6px; mat-icon { font-size: 17px; } }
+
+@media (max-width: 768px) {
+  .dsp-header       { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px 16px; }
+  .dsp-tabs         { flex-wrap: wrap; }
+  .dsp-tab          { flex: 1; justify-content: center; }
+  .dsp-row          { flex-wrap: wrap; }
+  .dsp-form-actions { flex-direction: column; button { width: 100%; } }
+}
+
+@media (max-width: 480px) {
+  .dsp-header-icon { width: 40px; height: 40px; mat-icon { font-size: 20px; } }
+  .dsp-title       { font-size: 16px; }
+  .dsp-case-header { flex-wrap: wrap; gap: 8px; }
+}

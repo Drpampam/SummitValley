@@ -1,0 +1,176 @@
+<div class="transactions-page">
+
+  <!-- ── Summary Ribbon ──────────────────────────────────────────────────────── -->
+  <div class="summary-ribbon">
+    <div class="sr-stat">
+      <div class="sr-icon credit"><mat-icon>south_west</mat-icon></div>
+      <div class="sr-info">
+        <p class="sr-label">Total In</p>
+        <p class="sr-value credit">+{{ fmt(totalCredit()) }}</p>
+      </div>
+    </div>
+    <div class="sr-divider"></div>
+    <div class="sr-stat">
+      <div class="sr-icon debit"><mat-icon>north_east</mat-icon></div>
+      <div class="sr-info">
+        <p class="sr-label">Total Out</p>
+        <p class="sr-value debit">-{{ fmt(totalDebit()) }}</p>
+      </div>
+    </div>
+    <div class="sr-divider"></div>
+    <div class="sr-stat">
+      <div class="sr-icon net" [class.positive]="netFlow() >= 0" [class.negative]="netFlow() < 0">
+        <mat-icon>{{ netFlow() >= 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+      </div>
+      <div class="sr-info">
+        <p class="sr-label">Net Flow</p>
+        <p class="sr-value" [class.credit]="netFlow() >= 0" [class.debit]="netFlow() < 0">
+          {{ netFlow() >= 0 ? '+' : '' }}{{ fmt(netFlow()) }}
+        </p>
+      </div>
+    </div>
+    <div class="sr-spacer"></div>
+    <div class="sr-stat count">
+      <p class="sr-label">Transactions</p>
+      <p class="sr-value neutral">{{ filteredTransactions().length }}</p>
+    </div>
+    <button mat-flat-button class="export-btn" (click)="exportCsv()">
+      <mat-icon>download</mat-icon>
+      Export CSV
+    </button>
+  </div>
+
+  <!-- ── Filters ─────────────────────────────────────────────────────────────── -->
+  <div class="filters-bar">
+    <form [formGroup]="filterForm" class="filters-form">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput formControlName="search" placeholder="Search transactions…" />
+        @if (filterForm.get('search')?.value) {
+          <button mat-icon-button matSuffix type="button" (click)="filterForm.patchValue({search: ''})">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="type-field">
+        <mat-select formControlName="type">
+          <mat-option value="all">All types</mat-option>
+          <mat-option value="credit">Credit only</mat-option>
+          <mat-option value="debit">Debit only</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>From</mat-label>
+        <input matInput [matDatepicker]="fromPicker" formControlName="dateFrom" />
+        <mat-datepicker-toggle matSuffix [for]="fromPicker" />
+        <mat-datepicker #fromPicker />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>To</mat-label>
+        <input matInput [matDatepicker]="toPicker" formControlName="dateTo" />
+        <mat-datepicker-toggle matSuffix [for]="toPicker" />
+        <mat-datepicker #toPicker />
+      </mat-form-field>
+
+      <button mat-stroked-button class="clear-btn" type="button" (click)="clearFilters()" matTooltip="Clear all filters">
+        <mat-icon>filter_list_off</mat-icon>
+        Clear
+      </button>
+    </form>
+  </div>
+
+  <!-- ── Table ───────────────────────────────────────────────────────────────── -->
+  <div class="table-container">
+    @if (filteredTransactions().length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon"><mat-icon>receipt_long</mat-icon></div>
+        <h3>No transactions found</h3>
+        <p>Try adjusting your filters or search query</p>
+        <button mat-stroked-button (click)="clearFilters()">Clear Filters</button>
+      </div>
+    } @else {
+      <div class="table-scroll">
+        <table class="txn-table">
+          <thead>
+            <tr>
+              <th class="col-date">Date</th>
+              <th class="col-desc">Description</th>
+              <th class="col-cat">Category</th>
+              <th class="col-amount">Amount</th>
+              <th class="col-balance">Balance After</th>
+              <th class="col-status">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of paginatedTransactions(); track row.id) {
+              <tr class="txn-row">
+
+                <!-- Date -->
+                <td class="col-date td-date">
+                  <span class="date-primary">{{ fmtDatePrimary(row.date) }}</span>
+                  <span class="date-secondary">{{ fmtDateYear(row.date) }}</span>
+                </td>
+
+                <!-- Description -->
+                <td class="col-desc">
+                  <div class="desc-cell">
+                    <div class="desc-icon" [style.background]="categoryColor(row.category) + '18'">
+                      <mat-icon [style.color]="categoryColor(row.category)">{{ categoryIcon(row.category) }}</mat-icon>
+                    </div>
+                    <div class="desc-text">
+                      <span class="desc-main">{{ row.description }}</span>
+                      @if (row.reference) {
+                        <span class="desc-ref">{{ row.reference }}</span>
+                      }
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Category -->
+                <td class="col-cat">
+                  <span class="cat-pill"
+                    [style.background]="categoryColor(row.category) + '18'"
+                    [style.color]="categoryColor(row.category)">
+                    {{ row.category | titlecase }}
+                  </span>
+                </td>
+
+                <!-- Amount -->
+                <td class="col-amount">
+                  <span class="amount-badge" [class.credit]="row.type === 'credit'" [class.debit]="row.type === 'debit'">
+                    <mat-icon>{{ row.type === 'credit' ? 'arrow_downward' : 'arrow_upward' }}</mat-icon>
+                    {{ row.type === 'credit' ? '+' : '-' }}{{ fmt(row.amount) }}
+                  </span>
+                </td>
+
+                <!-- Balance -->
+                <td class="col-balance td-balance">{{ fmt(row.balance) }}</td>
+
+                <!-- Status -->
+                <td class="col-status">
+                  <span class="status-pill" [class]="'status-' + row.status">
+                    <span class="status-dot"></span>
+                    {{ row.status | titlecase }}
+                  </span>
+                </td>
+
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <mat-paginator
+        [length]="filteredTransactions().length"
+        [pageSize]="pageSize()"
+        [pageSizeOptions]="[5, 10, 25, 50]"
+        (page)="onPageChange($event)"
+        showFirstLastButtons
+        class="txn-paginator"
+      />
+    }
+  </div>
+</div>

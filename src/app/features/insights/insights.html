@@ -1,0 +1,127 @@
+<div class="insights-page">
+
+  <!-- Header -->
+  <div class="insights-header">
+    <div class="insights-header-left">
+      <div class="insights-header-icon"><mat-icon>donut_large</mat-icon></div>
+      <div>
+        <h2 class="insights-title">Spending Insights</h2>
+        <p class="insights-sub">Understand where your money goes this month</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab toggle -->
+  <div class="ins-tabs">
+    <button class="ins-tab" [class.active]="activeTab()==='categories'" (click)="setTab('categories')">
+      <mat-icon>donut_large</mat-icon> Categories
+    </button>
+    <button class="ins-tab" [class.active]="activeTab()==='monthly'" (click)="setTab('monthly')">
+      <mat-icon>bar_chart</mat-icon> Monthly
+    </button>
+    <button class="ins-tab" [class.active]="activeTab()==='merchants'" (click)="setTab('merchants')">
+      <mat-icon>store</mat-icon> Top Merchants
+    </button>
+  </div>
+
+  <!-- ── CATEGORIES ──────────────────────────────────────── -->
+  @if (activeTab() === 'categories') {
+    @if (categorySpend().length === 0) {
+      <div class="ins-empty">
+        <mat-icon>donut_large</mat-icon>
+        <p>No spending data for this month yet.</p>
+      </div>
+    } @else {
+      <div class="ins-cat-layout">
+        <!-- Donut chart -->
+        <div class="ins-donut-wrap">
+          <div class="ins-donut" [style.background]="donutGradient()">
+            <div class="ins-donut-hole">
+              <p class="ins-donut-label">This Month</p>
+              <p class="ins-donut-total">
+                {{ currency() }}{{ totalSpend() | number:'1.0-0' }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="ins-cat-list">
+          @for (cat of categorySpend(); track cat.category) {
+            <div class="ins-cat-row">
+              <div class="ins-cat-swatch" [style.background]="cat.color">
+                <mat-icon>{{ cat.icon }}</mat-icon>
+              </div>
+              <div class="ins-cat-info">
+                <div class="ins-cat-top">
+                  <span class="ins-cat-name">{{ cat.label }}</span>
+                  <span class="ins-cat-pct">{{ cat.percentage }}%</span>
+                </div>
+                <div class="ins-cat-bar-track">
+                  <div class="ins-cat-bar" [style.width.%]="cat.percentage" [style.background]="cat.color"></div>
+                </div>
+              </div>
+              <div class="ins-cat-amt">
+                <p class="ins-cat-total">{{ currency() }}{{ cat.amount | number:'1.2-2' }}</p>
+                <p class="ins-cat-trend" [class]="trendClass(cat.trend)">
+                  <mat-icon>{{ trendIcon(cat.trend) }}</mat-icon> {{ cat.trend > 0 ? '+' : '' }}{{ cat.trend }}%
+                </p>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ── MONTHLY BAR CHART ────────────────────────────────── -->
+  @if (activeTab() === 'monthly') {
+    <div class="ins-monthly-wrap">
+      <div class="ins-legend-row">
+        <span class="ins-legend-item income"><span class="ins-legend-dot income"></span> Income</span>
+        <span class="ins-legend-item expense"><span class="ins-legend-dot expense"></span> Expenses</span>
+      </div>
+      <div class="ins-bar-chart">
+        @for (bar of monthlyBars(); track bar.label) {
+          <div class="ins-bar-group">
+            <div class="ins-bars">
+              <div class="ins-bar income animate-bar" [style.height]="barHeight(bar.income)" matTooltip="{{ currency() }}{{ bar.income | number:'1.0-0' }} income"></div>
+              <div class="ins-bar expense animate-bar" [style.height]="barHeight(bar.expenses)" matTooltip="{{ currency() }}{{ bar.expenses | number:'1.0-0' }} expenses"></div>
+            </div>
+            <p class="ins-bar-label">{{ bar.label }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ── TOP MERCHANTS ───────────────────────────────────── -->
+  @if (activeTab() === 'merchants') {
+    @if (topMerchants().length === 0) {
+      <div class="ins-empty">
+        <mat-icon>store</mat-icon>
+        <p>No merchant data available yet.</p>
+      </div>
+    } @else {
+      <div class="ins-merchant-list">
+        @for (m of topMerchants(); track m.name; let i = $index) {
+          <div class="ins-merchant-row">
+            <span class="ins-merchant-rank">#{{ i + 1 }}</span>
+            <div class="ins-merchant-icon" [style.background]="m.color + '22'">
+              <mat-icon [style.color]="m.color">{{ m.icon }}</mat-icon>
+            </div>
+            <div class="ins-merchant-info">
+              <p class="ins-merchant-name">{{ m.name }}</p>
+              <p class="ins-merchant-visits">{{ m.visitCount }} transaction{{ m.visitCount !== 1 ? 's' : '' }}</p>
+              <div class="ins-merchant-bar-track">
+                <div class="ins-merchant-bar animate-bar" [style.width]="merchantBarWidth(m.totalSpent)" [style.background]="m.color"></div>
+              </div>
+            </div>
+            <p class="ins-merchant-amt">{{ currency() }}{{ m.totalSpent | number:'1.2-2' }}</p>
+          </div>
+        }
+      </div>
+    }
+  }
+
+</div>

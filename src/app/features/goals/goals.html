@@ -1,0 +1,224 @@
+<div class="goals-page">
+
+  <!-- Header -->
+  <div class="goals-header">
+    <div class="goals-header-left">
+      <div class="goals-header-icon"><mat-icon>savings</mat-icon></div>
+      <div>
+        <h2 class="goals-title">Savings Goals</h2>
+        <p class="goals-sub">Set targets, track progress, and reach your financial milestones</p>
+      </div>
+    </div>
+    <button class="goals-add-btn" mat-flat-button (click)="openForm()">
+      <mat-icon>add</mat-icon> New Goal
+    </button>
+  </div>
+
+  <!-- Summary stats -->
+  <div class="goals-stats-row">
+    <div class="goals-stat-card">
+      <mat-icon>savings</mat-icon>
+      <div>
+        <p class="gs-label">Total Saved</p>
+        <p class="gs-val">{{ currency() }}{{ totalSaved() | number:'1.2-2' }}</p>
+      </div>
+    </div>
+    <div class="goals-stat-card">
+      <mat-icon>flag</mat-icon>
+      <div>
+        <p class="gs-label">Active Goals</p>
+        <p class="gs-val">{{ activeGoals().length }}</p>
+      </div>
+    </div>
+    <div class="goals-stat-card">
+      <mat-icon>check_circle</mat-icon>
+      <div>
+        <p class="gs-label">Completed</p>
+        <p class="gs-val">{{ completedGoals().length }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit form -->
+  @if (showForm()) {
+    <div class="goals-form-card">
+      <div class="gfc-head">
+        <p class="gfc-title"><mat-icon>{{ editingGoal() ? 'edit' : 'add_circle' }}</mat-icon> {{ editingGoal() ? 'Edit Goal' : 'Create New Goal' }}</p>
+        <button mat-icon-button (click)="closeForm()"><mat-icon>close</mat-icon></button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="saveGoal()" class="gfc-body">
+        <div class="gf-row">
+          <mat-form-field appearance="outline" class="gf-field">
+            <mat-label>Goal Name</mat-label>
+            <input matInput formControlName="name" placeholder="e.g. Emergency Fund" />
+            @if (form.get('name')?.invalid && form.get('name')?.touched) {
+              <mat-error>Name is required</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="gf-field">
+            <mat-label>Target Amount</mat-label>
+            <span matTextPrefix>{{ currency() }}&nbsp;</span>
+            <input matInput type="number" formControlName="targetAmount" placeholder="0.00" />
+          </mat-form-field>
+        </div>
+        <div class="gf-row">
+          <mat-form-field appearance="outline" class="gf-field">
+            <mat-label>Linked Account</mat-label>
+            <mat-select formControlName="linkedAccountId">
+              @for (a of accounts(); track a.id) {
+                <mat-option [value]="a.id">{{ accountLabel(a.id) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="gf-field">
+            <mat-label>Target Date</mat-label>
+            <input matInput type="date" formControlName="targetDate" />
+          </mat-form-field>
+        </div>
+
+        <!-- Icon picker -->
+        <p class="gf-picker-label">Icon</p>
+        <div class="gf-icon-picker">
+          @for (ic of goalIcons; track ic) {
+            <button type="button" class="gf-icon-opt" [class.selected]="form.value.icon === ic" (click)="form.patchValue({icon: ic})">
+              <mat-icon>{{ ic }}</mat-icon>
+            </button>
+          }
+        </div>
+
+        <!-- Color picker -->
+        <p class="gf-picker-label">Color</p>
+        <div class="gf-color-picker">
+          @for (c of goalColors; track c) {
+            <button type="button" class="gf-color-opt" [style.background]="c" [class.selected]="form.value.color === c" (click)="form.patchValue({color: c})"></button>
+          }
+        </div>
+
+        <!-- Auto contribute -->
+        <div class="gf-toggle-row">
+          <div>
+            <p class="gf-toggle-label">Monthly Auto-Contribution</p>
+            <p class="gf-toggle-sub">Automatically move funds each month</p>
+          </div>
+          <mat-slide-toggle formControlName="autoContribute"></mat-slide-toggle>
+        </div>
+        @if (form.value.autoContribute) {
+          <mat-form-field appearance="outline" class="gf-field">
+            <mat-label>Monthly Amount</mat-label>
+            <span matTextPrefix>{{ currency() }}&nbsp;</span>
+            <input matInput type="number" formControlName="monthlyContribution" />
+          </mat-form-field>
+        }
+
+        <div class="gfc-actions">
+          <button type="button" mat-stroked-button (click)="closeForm()">Cancel</button>
+          <button type="submit" mat-flat-button class="gfc-save-btn">
+            <mat-icon>{{ editingGoal() ? 'save' : 'add' }}</mat-icon>
+            {{ editingGoal() ? 'Save Changes' : 'Create Goal' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- Active Goals -->
+  @if (activeGoals().length > 0) {
+    <div class="goals-section-label"><mat-icon>flag</mat-icon> Active Goals</div>
+    <div class="goals-grid">
+      @for (g of activeGoals(); track g.id) {
+        <div class="goal-card" [class.paused]="g.status === 'paused'">
+          <div class="goal-card-top">
+            <div class="goal-icon-wrap" [style.background]="g.color + '22'">
+              <mat-icon [style.color]="g.color">{{ g.icon }}</mat-icon>
+            </div>
+            <div class="goal-meta">
+              <p class="goal-name">{{ g.name }}</p>
+              <p class="goal-account">{{ accountLabel(g.linkedAccountId) }}</p>
+              @if (g.status === 'paused') {
+                <span class="goal-paused-chip">Paused</span>
+              }
+            </div>
+            <div class="goal-actions">
+              <button mat-icon-button matTooltip="Edit" (click)="openForm(g)"><mat-icon>edit</mat-icon></button>
+              <button mat-icon-button [matTooltip]="g.status === 'paused' ? 'Resume' : 'Pause'" (click)="togglePause(g)">
+                <mat-icon>{{ g.status === 'paused' ? 'play_arrow' : 'pause' }}</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Delete" class="goal-delete-btn" (click)="deleteGoal(g.id)"><mat-icon>delete</mat-icon></button>
+            </div>
+          </div>
+
+          <div class="goal-amounts">
+            <span class="goal-current">{{ currency() }}{{ g.currentAmount | number:'1.2-2' }}</span>
+            <span class="goal-sep">of</span>
+            <span class="goal-target">{{ currency() }}{{ g.targetAmount | number:'1.2-2' }}</span>
+          </div>
+
+          <div class="goal-progress-track">
+            <div class="goal-progress-bar" [style.width.%]="progress(g)" [style.background]="g.color"></div>
+          </div>
+          <div class="goal-footer">
+            <span class="goal-pct">{{ progress(g) }}% complete</span>
+            <span class="goal-days">{{ daysLeft(g.targetDate) }} days left</span>
+          </div>
+
+          @if (g.autoContribute) {
+            <div class="goal-auto-chip">
+              <mat-icon>autorenew</mat-icon> {{ currency() }}{{ g.monthlyContribution | number:'1.0-0' }}/mo auto
+            </div>
+          }
+
+          <!-- Add Funds -->
+          @if (addFundsFor() === g.id) {
+            <div class="goal-add-funds">
+              <input type="number" class="goal-funds-input" placeholder="Amount" [ngModel]="fundsAmount()" (ngModelChange)="fundsAmount.set(+$event)" />
+              <button mat-flat-button class="goal-funds-confirm" (click)="confirmAddFunds(g.id)">Add</button>
+              <button mat-stroked-button (click)="closeAddFunds()">Cancel</button>
+            </div>
+          } @else {
+            <button class="goal-add-funds-btn" mat-stroked-button (click)="openAddFunds(g.id)">
+              <mat-icon>add</mat-icon> Add Funds
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Completed Goals -->
+  @if (completedGoals().length > 0) {
+    <div class="goals-section-label completed"><mat-icon>check_circle</mat-icon> Completed Goals</div>
+    <div class="goals-grid">
+      @for (g of completedGoals(); track g.id) {
+        <div class="goal-card completed">
+          <div class="goal-card-top">
+            <div class="goal-icon-wrap" [style.background]="g.color + '22'">
+              <mat-icon [style.color]="g.color">{{ g.icon }}</mat-icon>
+            </div>
+            <div class="goal-meta">
+              <p class="goal-name">{{ g.name }}</p>
+              <span class="goal-completed-chip"><mat-icon>check_circle</mat-icon> Goal reached!</span>
+            </div>
+            <button mat-icon-button matTooltip="Delete" class="goal-delete-btn" (click)="deleteGoal(g.id)"><mat-icon>delete</mat-icon></button>
+          </div>
+          <div class="goal-progress-track">
+            <div class="goal-progress-bar" style="width:100%" [style.background]="g.color"></div>
+          </div>
+          <div class="goal-footer">
+            <span class="goal-pct">{{ currency() }}{{ g.targetAmount | number:'1.2-2' }} saved</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (activeGoals().length === 0 && completedGoals().length === 0 && !showForm()) {
+    <div class="goals-empty">
+      <mat-icon>savings</mat-icon>
+      <p>No goals yet. Create your first savings goal!</p>
+      <button mat-flat-button class="goals-add-btn" (click)="openForm()">
+        <mat-icon>add</mat-icon> Create Goal
+      </button>
+    </div>
+  }
+
+</div>

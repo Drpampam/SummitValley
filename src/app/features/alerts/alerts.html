@@ -1,0 +1,109 @@
+<div class="alerts-page">
+
+  <!-- Header -->
+  <div class="alrt-header">
+    <div class="alrt-header-left">
+      <div class="alrt-header-icon"><mat-icon>notifications_active</mat-icon></div>
+      <div>
+        <h2 class="alrt-title">Account Alerts</h2>
+        <p class="alrt-sub">Choose when and how you get notified about account activity</p>
+      </div>
+    </div>
+    <div class="alrt-header-stats">
+      <div class="alrt-stat">
+        <p class="alrt-stat-label">Active</p>
+        <p class="alrt-stat-val">{{ enabledCount() }} / {{ alerts().length }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Channel guide -->
+  <div class="alrt-channel-guide">
+    <p class="alrt-guide-label">Delivery Channels</p>
+    <div class="alrt-guide-pills">
+      @for (ch of channels; track ch.value) {
+        <span class="alrt-guide-pill">
+          <mat-icon>{{ ch.icon }}</mat-icon> {{ ch.label }}
+        </span>
+      }
+    </div>
+  </div>
+
+  <!-- Alert cards -->
+  <div class="alrt-grid">
+    @for (a of alerts(); track a.id) {
+      <div class="alrt-card" [class.enabled]="a.enabled">
+
+        <!-- Top row: icon, info, toggle -->
+        <div class="alrt-card-top">
+          <div class="alrt-icon-wrap" [class.active]="a.enabled">
+            <mat-icon>{{ triggerIcon(a.trigger) }}</mat-icon>
+          </div>
+          <div class="alrt-info">
+            <p class="alrt-label">{{ a.label }}</p>
+            <p class="alrt-desc">{{ a.description }}</p>
+          </div>
+          <mat-slide-toggle [checked]="a.enabled" (change)="toggle(a.id)" matTooltip="{{ a.enabled ? 'Disable' : 'Enable' }} this alert"></mat-slide-toggle>
+        </div>
+
+        <!-- Expanded settings (only when enabled) -->
+        @if (a.enabled) {
+          <div class="alrt-settings">
+
+            <!-- Channels -->
+            <div class="alrt-channels-row">
+              <p class="alrt-settings-label">Notify via</p>
+              <div class="alrt-channel-btns">
+                @for (ch of channels; track ch.value) {
+                  <button
+                    class="alrt-channel-btn"
+                    [class.active]="isChannelActive(a, ch.value)"
+                    (click)="toggleChannel(a, ch.value)"
+                    [matTooltip]="ch.label"
+                  >
+                    <mat-icon>{{ ch.icon }}</mat-icon>
+                    <span>{{ ch.label }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Threshold (for applicable alerts) -->
+            @if (a.threshold !== undefined) {
+              <div class="alrt-threshold-row">
+                <p class="alrt-settings-label">Threshold</p>
+                @if (thresholdEditing() === a.id) {
+                  <div class="alrt-threshold-edit">
+                    <span class="alrt-threshold-sym">{{ currency() }}</span>
+                    <input
+                      type="number" class="alrt-threshold-input" min="1"
+                      [ngModel]="tempThreshold()"
+                      (ngModelChange)="tempThreshold.set($event)"
+                    />
+                    <button mat-flat-button class="alrt-save-btn" (click)="saveThreshold(a.id)">Save</button>
+                    <button mat-stroked-button (click)="cancelThreshold()">Cancel</button>
+                  </div>
+                } @else {
+                  <div class="alrt-threshold-display" (click)="openThreshold(a)" matTooltip="Click to edit threshold">
+                    <span class="alrt-threshold-val">{{ currency() }}{{ a.threshold | number:'1.0-0' }}</span>
+                    <mat-icon class="alrt-edit-icon">edit</mat-icon>
+                  </div>
+                }
+              </div>
+            }
+
+          </div>
+        }
+
+      </div>
+    }
+  </div>
+
+  @if (alerts().length === 0) {
+    <div class="alrt-empty">
+      <mat-icon>notifications_off</mat-icon>
+      <p>No alert preferences configured for your account.</p>
+    </div>
+  }
+
+</div>

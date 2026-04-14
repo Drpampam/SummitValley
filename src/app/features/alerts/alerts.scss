@@ -1,0 +1,88 @@
+.alerts-page { display: flex; flex-direction: column; gap: 20px; max-width: 900px; animation: fadeInUp .3s ease-out both; }
+
+// ── Header ─────────────────────────────────────────────────────────────────────
+.alrt-header { display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #660000 0%, #880000 50%, #CC0000 100%); border-radius: var(--nb-radius-xl); padding: 22px 26px; gap: 16px; }
+.alrt-header-left { display: flex; align-items: center; gap: 14px; }
+.alrt-header-icon { width: 48px; height: 48px; border-radius: var(--nb-radius-md); background: rgba(0,0,0,.2); border: 1px solid rgba(255,205,65,.3); display: flex; align-items: center; justify-content: center; mat-icon { color: #FFCD41; font-size: 24px; } }
+.alrt-title { margin: 0 0 4px; font-size: 18px; font-weight: 800; color: #fff; }
+.alrt-sub   { margin: 0; font-size: 12px; color: rgba(255,255,255,.6); }
+.alrt-stat { text-align: right; .alrt-stat-label { margin: 0 0 2px; font-size: 11px; color: rgba(255,255,255,.55); text-transform: uppercase; } .alrt-stat-val { margin: 0; font-size: 18px; font-weight: 800; color: #fff; } }
+
+// ── Channel guide ──────────────────────────────────────────────────────────────
+.alrt-channel-guide { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.alrt-guide-label { margin: 0; font-size: 12px; font-weight: 600; color: var(--nb-text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.alrt-guide-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.alrt-guide-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px; background: var(--nb-border-light); border: 1px solid var(--nb-border); font-size: 12px; color: var(--nb-text-secondary); mat-icon { font-size: 14px; width: 14px; height: 14px; } }
+
+// ── Grid ───────────────────────────────────────────────────────────────────────
+.alrt-grid { display: flex; flex-direction: column; gap: 10px; }
+
+// ── Card ───────────────────────────────────────────────────────────────────────
+.alrt-card {
+  background: var(--nb-card-bg); border: 1px solid var(--nb-border); border-radius: var(--nb-radius-lg);
+  overflow: hidden; transition: box-shadow .15s;
+  &.enabled { border-color: var(--nb-primary-light); box-shadow: 0 0 0 1px var(--nb-primary-light); }
+  &:hover { box-shadow: var(--nb-shadow-md); }
+}
+.alrt-card-top { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+.alrt-icon-wrap {
+  width: 44px; height: 44px; border-radius: var(--nb-radius-md); flex-shrink: 0;
+  background: var(--nb-border-light); border: 1px solid var(--nb-border);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+  mat-icon { font-size: 22px; color: var(--nb-text-muted); transition: color .2s; }
+  &.active { background: var(--nb-primary-pale); border-color: var(--nb-primary-light); mat-icon { color: var(--nb-primary); } }
+}
+.alrt-info { flex: 1; min-width: 0; }
+.alrt-label { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
+.alrt-desc  { margin: 0; font-size: 12px; color: var(--nb-text-muted); }
+
+// ── Expanded settings ──────────────────────────────────────────────────────────
+.alrt-settings { padding: 0 18px 16px; border-top: 1px solid var(--nb-border-light); margin-top: -2px; display: flex; flex-direction: column; gap: 14px; padding-top: 14px; }
+.alrt-settings-label { margin: 0 0 8px; font-size: 11px; font-weight: 700; color: var(--nb-text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+
+.alrt-channels-row {}
+.alrt-channel-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.alrt-channel-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: var(--nb-radius-sm); border: 1px solid var(--nb-border);
+  background: none; font-size: 12px; font-weight: 500; color: var(--nb-text-muted); cursor: pointer; transition: all .15s;
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+  &.active { background: var(--nb-primary-pale); border-color: var(--nb-primary-light); color: var(--nb-primary); font-weight: 700; }
+  &:hover:not(.active) { border-color: var(--nb-primary-light); color: var(--nb-text-secondary); }
+}
+
+.alrt-threshold-row {}
+.alrt-threshold-display {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 6px 12px; border-radius: var(--nb-radius-sm); border: 1px dashed var(--nb-border);
+  background: var(--nb-border-light); transition: all .15s;
+  &:hover { border-color: var(--nb-primary-light); background: var(--nb-primary-pale); }
+}
+.alrt-threshold-val { font-size: 14px; font-weight: 700; }
+.alrt-edit-icon { font-size: 15px !important; width: 15px !important; height: 15px !important; color: var(--nb-text-muted); }
+
+.alrt-threshold-edit { display: flex; align-items: center; gap: 8px; }
+.alrt-threshold-sym { font-size: 16px; font-weight: 700; color: var(--nb-text-secondary); }
+.alrt-threshold-input {
+  width: 100px; height: 36px; padding: 0 10px; border-radius: var(--nb-radius-sm); border: 1px solid var(--nb-border);
+  font-size: 14px; font-weight: 600; background: #fff; outline: none;
+  &:focus { border-color: var(--nb-primary); box-shadow: 0 0 0 2px var(--nb-primary-pale); }
+}
+.alrt-save-btn { background: var(--nb-primary) !important; color: #fff !important; height: 36px !important; }
+
+.alrt-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px; color: var(--nb-text-muted); mat-icon { font-size: 48px; width: 48px; height: 48px; opacity: .2; } p { margin: 0; font-size: 14px; } }
+
+@media (max-width: 768px) {
+  .alrt-header      { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px 16px; }
+  .alrt-card-top    { flex-wrap: wrap; }
+  .alrt-channels    { flex-wrap: wrap; }
+  .alrt-channel-guide { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 480px) {
+  .alrt-header-icon { width: 40px; height: 40px; mat-icon { font-size: 20px; } }
+  .alrt-title       { font-size: 16px; }
+  .alrt-card        { padding: 14px; }
+  .alrt-guide-pills { gap: 6px; }
+}

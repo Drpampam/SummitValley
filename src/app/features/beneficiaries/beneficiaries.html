@@ -1,0 +1,184 @@
+<div class="ben-page">
+
+  <!-- Header -->
+  <div class="ben-header">
+    <div class="ben-header-left">
+      <div class="ben-header-icon"><mat-icon>people</mat-icon></div>
+      <div>
+        <h2 class="ben-title">Beneficiaries</h2>
+        <p class="ben-sub">Manage saved payees for fast and easy transfers</p>
+      </div>
+    </div>
+    <div class="ben-header-actions">
+      <button class="ben-add-btn" mat-flat-button (click)="openForm('internal')">
+        <mat-icon>account_balance</mat-icon> Add Internal
+      </button>
+      <button class="ben-add-btn external" mat-flat-button (click)="openForm('external')">
+        <mat-icon>person_add</mat-icon> Add External
+      </button>
+    </div>
+  </div>
+
+  <!-- Add form -->
+  @if (showForm()) {
+    <div class="ben-form-card">
+      <div class="ben-form-head">
+        <p class="ben-form-title">
+          <mat-icon>{{ benType() === 'internal' ? 'account_balance' : 'person_add' }}</mat-icon>
+          {{ benType() === 'internal' ? 'Add Internal Beneficiary' : 'Add External Beneficiary' }}
+        </p>
+        <button mat-icon-button (click)="closeForm()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      @if (benType() === 'internal') {
+        <form [formGroup]="internalForm" (ngSubmit)="saveInternal()" class="ben-form-body">
+          <mat-form-field appearance="outline" class="ben-field">
+            <mat-label>Nickname</mat-label>
+            <input matInput formControlName="nickname" placeholder="e.g. My Savings" />
+            @if (internalForm.get('nickname')?.invalid && internalForm.get('nickname')?.touched) {
+              <mat-error>Nickname is required</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="ben-field">
+            <mat-label>Destination Account</mat-label>
+            <mat-select formControlName="toAccountId">
+              @for (a of accounts(); track a.id) {
+                <mat-option [value]="a.id">{{ accountLabel(a.id) }}</mat-option>
+              }
+            </mat-select>
+            @if (internalForm.get('toAccountId')?.invalid && internalForm.get('toAccountId')?.touched) {
+              <mat-error>Please select an account</mat-error>
+            }
+          </mat-form-field>
+          <div class="ben-form-actions">
+            <button type="button" mat-stroked-button (click)="closeForm()">Cancel</button>
+            <button type="submit" mat-flat-button class="ben-save-btn">
+              <mat-icon>save</mat-icon> Save Beneficiary
+            </button>
+          </div>
+        </form>
+      }
+
+      @if (benType() === 'external') {
+        <form [formGroup]="externalForm" (ngSubmit)="saveExternal()" class="ben-form-body">
+          <div class="ben-form-row">
+            <mat-form-field appearance="outline" class="ben-field">
+              <mat-label>Nickname</mat-label>
+              <input matInput formControlName="nickname" placeholder="e.g. Mom" />
+              @if (externalForm.get('nickname')?.invalid && externalForm.get('nickname')?.touched) {
+                <mat-error>Nickname is required</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="ben-field">
+              <mat-label>Recipient Full Name</mat-label>
+              <input matInput formControlName="recipientName" placeholder="e.g. Linda Morgan" />
+              @if (externalForm.get('recipientName')?.invalid && externalForm.get('recipientName')?.touched) {
+                <mat-error>Recipient name is required</mat-error>
+              }
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="ben-field">
+            <mat-label>Bank Name</mat-label>
+            <input matInput formControlName="bankName" placeholder="e.g. Chase Bank" />
+            @if (externalForm.get('bankName')?.invalid && externalForm.get('bankName')?.touched) {
+              <mat-error>Bank name is required</mat-error>
+            }
+          </mat-form-field>
+          <div class="ben-form-row">
+            <mat-form-field appearance="outline" class="ben-field">
+              <mat-label>Routing Number (9 digits)</mat-label>
+              <input matInput formControlName="routingNumber" maxlength="9" placeholder="021000021" />
+              @if (externalForm.get('routingNumber')?.invalid && externalForm.get('routingNumber')?.touched) {
+                <mat-error>Enter a valid 9-digit routing number</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="ben-field">
+              <mat-label>Account Number</mat-label>
+              <input matInput formControlName="accountNumber" placeholder="Account number" />
+              @if (externalForm.get('accountNumber')?.invalid && externalForm.get('accountNumber')?.touched) {
+                <mat-error>Account number is required</mat-error>
+              }
+            </mat-form-field>
+          </div>
+          <div class="ben-form-actions">
+            <button type="button" mat-stroked-button (click)="closeForm()">Cancel</button>
+            <button type="submit" mat-flat-button class="ben-save-btn">
+              <mat-icon>save</mat-icon> Save Beneficiary
+            </button>
+          </div>
+        </form>
+      }
+
+    </div>
+  }
+
+  <!-- Internal beneficiaries -->
+  @if (internalBens().length > 0) {
+    <div class="ben-section-label">
+      <mat-icon>account_balance</mat-icon> Own Accounts
+    </div>
+    <div class="ben-list">
+      @for (b of internalBens(); track b.id) {
+        <div class="ben-row">
+          <div class="ben-avatar internal">{{ initials(b.nickname) }}</div>
+          <div class="ben-info">
+            <p class="ben-nickname">{{ b.nickname }}</p>
+            <p class="ben-detail">{{ accountLabel(b.toAccountId ?? '') }}</p>
+            @if (b.lastUsed) {
+              <p class="ben-last-used">Last used {{ b.lastUsed | date:'MMM d, y' }}</p>
+            }
+          </div>
+          <div class="ben-type-chip internal"><mat-icon>account_balance</mat-icon> Internal</div>
+          <button mat-icon-button class="ben-remove-btn" matTooltip="Remove beneficiary" (click)="remove(b.id, b.nickname)">
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- External beneficiaries -->
+  @if (externalBens().length > 0) {
+    <div class="ben-section-label">
+      <mat-icon>people</mat-icon> External Payees
+    </div>
+    <div class="ben-list">
+      @for (b of externalBens(); track b.id) {
+        <div class="ben-row">
+          <div class="ben-avatar external">{{ initials(b.nickname) }}</div>
+          <div class="ben-info">
+            <p class="ben-nickname">{{ b.nickname }}</p>
+            <p class="ben-detail">{{ b.recipientName }} · {{ b.bankName }}</p>
+            <p class="ben-detail secondary">{{ b.accountNumber }}
+              @if (b.routingNumber) { &nbsp;·&nbsp; Routing: {{ b.routingNumber }} }
+            </p>
+            @if (b.lastUsed) {
+              <p class="ben-last-used">Last used {{ b.lastUsed | date:'MMM d, y' }}</p>
+            }
+          </div>
+          <div class="ben-type-chip external"><mat-icon>person</mat-icon> External</div>
+          <button mat-icon-button class="ben-remove-btn" matTooltip="Remove beneficiary" (click)="remove(b.id, b.nickname)">
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (beneficiaries().length === 0 && !showForm()) {
+    <div class="ben-empty">
+      <mat-icon>people_outline</mat-icon>
+      <p>No beneficiaries saved yet.</p>
+      <p class="ben-empty-sub">Add internal accounts or external payees to speed up your transfers.</p>
+      <div class="ben-empty-actions">
+        <button mat-flat-button class="ben-save-btn" (click)="openForm('internal')">
+          <mat-icon>account_balance</mat-icon> Add Internal
+        </button>
+        <button mat-stroked-button (click)="openForm('external')">
+          <mat-icon>person_add</mat-icon> Add External
+        </button>
+      </div>
+    </div>
+  }
+
+</div>

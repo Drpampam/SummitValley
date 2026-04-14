@@ -1,0 +1,350 @@
+<div class="transfers-page">
+
+  <div class="transfers-layout">
+    <!-- ── Left: Form ─────────────────────────────────────── -->
+    <div class="transfers-form-col">
+
+      <!-- Tab Toggle (hidden while transfer is in progress) -->
+      @if (transferStep() === 0) {
+        <div class="transfer-toggle">
+          <button
+            class="toggle-btn"
+            [class.active]="activeTab() === 'internal'"
+            (click)="activeTab.set('internal')"
+          >
+            <mat-icon>account_balance_wallet</mat-icon>
+            Between My Accounts
+          </button>
+          <button
+            class="toggle-btn"
+            [class.active]="activeTab() === 'external'"
+            (click)="activeTab.set('external')"
+          >
+            <mat-icon>send</mat-icon>
+            {{ 'TRANSFERS.EXTERNAL' | translate }}
+          </button>
+        </div>
+      }
+
+      <!-- ── Progress Panel ────────────────────────────────── -->
+      @if (transferStep() !== 0) {
+        <div class="progress-card" [class.declined-card]="transferStep() === -1">
+
+          <!-- Amount bubble -->
+          <div class="tp-amount-bubble" [class.declined-bubble]="transferStep() === -1">
+            <span class="tp-amount-label">{{ transferStep() === -1 ? 'Attempted Transfer' : 'Transferring' }}</span>
+            <span class="tp-amount-value">{{ fmt(lastAmount()) }}</span>
+            @if (lastRecipient()) {
+              <span class="tp-amount-to">{{ transferStep() === -1 ? 'intended for' : 'to' }} {{ lastRecipient() }}</span>
+            }
+          </div>
+
+          <!-- ── Declined State ──────────────────────────── -->
+          @if (transferStep() === -1) {
+            <div class="tp-declined">
+              <div class="tp-declined-icon">
+                <mat-icon>block</mat-icon>
+              </div>
+              <p class="tp-declined-title">Transaction Declined</p>
+              <div class="tp-declined-msg-wrap">
+                <mat-icon class="tp-declined-msg-icon">info</mat-icon>
+                <p class="tp-declined-msg">{{ denialMsg() }}</p>
+              </div>
+              <div class="tp-declined-actions">
+                <button mat-flat-button class="tp-new-btn" (click)="resetTransfer()">
+                  <mat-icon>arrow_back</mat-icon>
+                  Back to Transfers
+                </button>
+                <p class="tp-declined-hint">Contact your account manager if you believe this is an error.</p>
+              </div>
+            </div>
+          }
+
+          <!-- ── Normal Progress ────────────────────────── -->
+          @if (transferStep() > 0) {
+            <!-- Step track -->
+            <div class="tp-steps-wrap">
+              <!-- Background track -->
+              <div class="tp-track-bg"></div>
+              <!-- Animated fill -->
+              <div class="tp-track-fill" [style.width.%]="trackFillPercent()"></div>
+
+              <!-- Step nodes -->
+              @for (step of progressSteps; track step.id) {
+                <div
+                  class="tp-node"
+                  [class.tp-done]="transferStep() > step.id"
+                  [class.tp-active]="transferStep() === step.id"
+                >
+                  <div class="tp-node-ring"></div>
+                  <div class="tp-node-circle">
+                    @if (transferStep() > step.id) {
+                      <mat-icon class="tp-node-icon">check</mat-icon>
+                    } @else if (transferStep() === step.id && step.id < 4) {
+                      <mat-icon class="tp-node-icon spin">{{ step.icon }}</mat-icon>
+                    } @else {
+                      <mat-icon class="tp-node-icon">{{ step.icon }}</mat-icon>
+                    }
+                  </div>
+                  <span class="tp-node-label">{{ step.label }}</span>
+                </div>
+              }
+            </div>
+
+            <!-- Current step message -->
+            <p class="tp-message">{{ currentMessage() }}</p>
+
+            <!-- Success state -->
+            @if (transferStep() === 4) {
+              <div class="tp-success">
+                <div class="tp-success-icon">
+                  <mat-icon>check_circle</mat-icon>
+                </div>
+                <p class="tp-success-title">Transfer Complete</p>
+                <p class="tp-success-sub">
+                  {{ fmt(lastAmount()) }}{{ lastRecipient() ? ' sent to ' + lastRecipient() : ' moved successfully' }}
+                </p>
+                <button mat-flat-button class="tp-new-btn" (click)="resetTransfer()">
+                  <mat-icon>add</mat-icon>
+                  New Transfer
+                </button>
+              </div>
+            }
+          }
+
+        </div>
+      }
+
+      <!-- ── Internal Transfer Form ─────────────────────────── -->
+      @if (transferStep() === 0 && activeTab() === 'internal') {
+        <div class="form-card">
+          <form [formGroup]="internalForm" (ngSubmit)="submitInternal()">
+
+            <div class="field-group">
+              <label class="field-label">From Account</label>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-select formControlName="fromAccount">
+                  @for (acc of accounts(); track acc.id) {
+                    <mat-option [value]="acc.id">{{ getAccountLabel(acc) }}</mat-option>
+                  }
+                </mat-select>
+                <mat-icon matSuffix>arrow_drop_down</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <div class="swap-divider">
+              <div class="swap-line"></div>
+              <div class="swap-circle">
+                <mat-icon>swap_vert</mat-icon>
+              </div>
+              <div class="swap-line"></div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">To Account</label>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-select formControlName="toAccount">
+                  @for (acc of accounts(); track acc.id) {
+                    <mat-option [value]="acc.id">{{ getAccountLabel(acc) }}</mat-option>
+                  }
+                </mat-select>
+                <mat-icon matSuffix>arrow_drop_down</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <div class="amount-section">
+              <label class="field-label">Amount</label>
+              <div class="amount-input-wrap">
+                <span class="currency-symbol">{{ localeService.currencySymbol() }}</span>
+                <input
+                  class="amount-input"
+                  type="number"
+                  formControlName="amount"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div class="two-col">
+              <div class="field-group">
+                <label class="field-label">Transfer Date</label>
+                <mat-form-field appearance="outline" class="full-width">
+                  <input matInput [matDatepicker]="dp1" formControlName="date" [min]="today" />
+                  <mat-datepicker-toggle matSuffix [for]="dp1" />
+                  <mat-datepicker #dp1 />
+                </mat-form-field>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Note <span class="optional">(Optional)</span></label>
+              <mat-form-field appearance="outline" class="full-width">
+                <textarea matInput formControlName="note" rows="2" placeholder="e.g. Monthly savings top-up"></textarea>
+              </mat-form-field>
+            </div>
+
+            <button
+              class="submit-btn"
+              type="submit"
+              [disabled]="internalForm.invalid"
+            >
+              <mat-icon>swap_horiz</mat-icon>
+              <span>Transfer Funds</span>
+            </button>
+          </form>
+        </div>
+      }
+
+      <!-- ── External Transfer Form ─────────────────────────── -->
+      @if (transferStep() === 0 && activeTab() === 'external') {
+        <div class="form-card">
+          <form [formGroup]="externalForm" (ngSubmit)="submitExternal()">
+
+            <div class="field-group">
+              <label class="field-label">From Account</label>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-select formControlName="fromAccount">
+                  @for (acc of accounts(); track acc.id) {
+                    <mat-option [value]="acc.id">{{ getAccountLabel(acc) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="recipient-section">
+              <p class="recipient-label">Recipient Details</p>
+              <div class="field-group">
+                <label class="field-label">Full Name</label>
+                <mat-form-field appearance="outline" class="full-width">
+                  <input matInput formControlName="recipientName" placeholder="e.g. Jane A. Smith (full legal name)" />
+                  <mat-icon matSuffix>person_outline</mat-icon>
+                </mat-form-field>
+              </div>
+              <div class="two-col">
+                <div class="field-group">
+                  <label class="field-label">{{ 'TRANSFERS.ROUTING_NUMBER' | translate }}</label>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <input matInput formControlName="routingNumber" placeholder="9-digit routing number" />
+                  </mat-form-field>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Account Number</label>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <input matInput formControlName="accountNumber" placeholder="Recipient account number" />
+                  </mat-form-field>
+                </div>
+              </div>
+            </div>
+
+            <div class="amount-section">
+              <label class="field-label">Amount</label>
+              <div class="amount-input-wrap">
+                <span class="currency-symbol">{{ localeService.currencySymbol() }}</span>
+                <input
+                  class="amount-input"
+                  type="number"
+                  formControlName="amount"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div class="two-col">
+              <div class="field-group">
+                <label class="field-label">Transfer Date</label>
+                <mat-form-field appearance="outline" class="full-width">
+                  <input matInput [matDatepicker]="dp2" formControlName="date" [min]="today" />
+                  <mat-datepicker-toggle matSuffix [for]="dp2" />
+                  <mat-datepicker #dp2 />
+                </mat-form-field>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Reference <span class="optional">(Optional)</span></label>
+              <mat-form-field appearance="outline" class="full-width">
+                <textarea matInput formControlName="note" rows="2" placeholder="e.g. Rent payment — Invoice #INV-2024-001"></textarea>
+              </mat-form-field>
+            </div>
+
+            <button
+              class="submit-btn"
+              type="submit"
+              [disabled]="externalForm.invalid"
+            >
+              <mat-icon>send</mat-icon>
+              <span>Send Transfer</span>
+            </button>
+          </form>
+        </div>
+      }
+    </div>
+
+    <!-- ── Right: Info Panel ─────────────────────────────── -->
+    <div class="info-col">
+      <!-- Transfer summary -->
+      <div class="info-card summary-card">
+        <div class="ic-header">
+          <mat-icon class="ic-icon">info_outline</mat-icon>
+          <h3 class="ic-title">Transfer Summary</h3>
+        </div>
+        <div class="summary-rows">
+          <div class="sum-row">
+            <span class="sum-label">Type</span>
+            <span class="sum-val">{{ activeTab() === 'internal' ? 'Internal' : 'External' }}</span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-label">Amount</span>
+            <span class="sum-val amount">
+              {{ activeTab() === 'internal'
+                  ? (internalForm.get('amount')?.value ? fmt(internalForm.get('amount')?.value) : '—')
+                  : (externalForm.get('amount')?.value ? fmt(externalForm.get('amount')?.value) : '—') }}
+            </span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-label">Fee</span>
+            <span class="sum-val fee">Free</span>
+          </div>
+          <div class="sum-row total-row">
+            <span class="sum-label">Total</span>
+            <span class="sum-val total">
+              {{ activeTab() === 'internal'
+                  ? (internalForm.get('amount')?.value ? fmt(internalForm.get('amount')?.value) : '—')
+                  : (externalForm.get('amount')?.value ? fmt(externalForm.get('amount')?.value) : '—') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security notice -->
+      <div class="info-card security-card">
+        <mat-icon class="sec-icon">shield</mat-icon>
+        <div>
+          <p class="sec-title">Secured Transfer</p>
+          <p class="sec-body">All transfers are protected by 256-bit SSL encryption and monitored for fraud 24/7.</p>
+        </div>
+      </div>
+
+      <!-- Limits -->
+      <div class="info-card limits-card">
+        <h4 class="limits-title">Transfer Limits</h4>
+        <div class="limit-row">
+          <span>Daily limit</span>
+          <strong>{{ localeService.formatCurrency(50000) }}</strong>
+        </div>
+        <div class="limit-row">
+          <span>Per transfer</span>
+          <strong>{{ localeService.formatCurrency(25000) }}</strong>
+        </div>
+        <div class="limit-row">
+          <span>Monthly limit</span>
+          <strong>{{ localeService.formatCurrency(250000) }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

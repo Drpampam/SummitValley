@@ -1,0 +1,141 @@
+<div class="auth-layout">
+  <!-- ── Left Brand Panel ───────────────────────────────── -->
+  <div class="brand-panel">
+    <div class="brand-content">
+      <div class="brand-logo">
+        <div class="brand-logo-mark">
+          <mat-icon>account_balance</mat-icon>
+        </div>
+        <span class="brand-logo-name">Summit Valley Bank</span>
+      </div>
+
+      <div class="brand-hero">
+        <h2 class="brand-headline">Your money,<br/>beautifully managed.</h2>
+        <p class="brand-subline">Seamless banking across the US and UK — one account, zero compromise.</p>
+      </div>
+
+      <ul class="feature-list">
+        <li class="feature-item">
+          <div class="feature-icon"><mat-icon>shield</mat-icon></div>
+          <div class="feature-text">
+            <strong>Bank-grade security</strong>
+            <span>256-bit SSL encryption on every request</span>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon"><mat-icon>public</mat-icon></div>
+          <div class="feature-text">
+            <strong>US &amp; UK ready</strong>
+            <span>Full USD and GBP support, always</span>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon"><mat-icon>bolt</mat-icon></div>
+          <div class="feature-text">
+            <strong>Instant transfers</strong>
+            <span>Move money in seconds, any time</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <p class="brand-footer">Regulated by the FCA (UK) &amp; FDIC insured (US)</p>
+  </div>
+
+  <!-- ── Right Form Panel ──────────────────────────────── -->
+  <div class="form-panel">
+    <div class="form-wrapper">
+      <div class="form-header">
+        <h1 class="form-title">Welcome back</h1>
+        <p class="form-subtitle">Sign in to your Summit Valley Bank account</p>
+      </div>
+
+      @if (sessionExpired()) {
+        <div class="session-notice">
+          <mat-icon>timer_off</mat-icon>
+          <span>You were logged out due to inactivity. Please sign in again.</span>
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+        <div class="field-group">
+          <label class="field-label">Email address</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput type="email" formControlName="email" autocomplete="email" placeholder="you@summitvalleybank.com" />
+            <mat-icon matSuffix>mail_outline</mat-icon>
+            @if (form.get('email')?.hasError('required') && form.get('email')?.touched) {
+              <mat-error>Email is required</mat-error>
+            }
+            @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+              <mat-error>Please enter a valid email</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label-row">
+            <label class="field-label">Password</label>
+            <a class="forgot-link" href="#">Forgot password?</a>
+          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <input
+              matInput
+              [type]="hidePassword() ? 'password' : 'text'"
+              formControlName="password"
+              autocomplete="current-password"
+              placeholder="••••••••"
+            />
+            <button mat-icon-button matSuffix type="button" (click)="hidePassword.set(!hidePassword())">
+              <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (form.get('password')?.hasError('required') && form.get('password')?.touched) {
+              <mat-error>Password is required</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        @if (error()) {
+          <div class="error-alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ error() }}</span>
+          </div>
+        }
+
+        <button mat-flat-button type="submit" class="submit-btn" [disabled]="form.invalid || loading()">
+          @if (loading()) {
+            <mat-spinner diameter="20" />
+            <span>Signing in…</span>
+          } @else {
+            <ng-container>
+              <span>Sign In</span>
+              <mat-icon>arrow_forward</mat-icon>
+            </ng-container>
+          }
+        </button>
+      </form>
+
+      <!-- Demo credentials -->
+      <div class="demo-section">
+        <div class="demo-header">
+          <mat-icon>info</mat-icon>
+          <strong>Demo Accounts — click to fill</strong>
+        </div>
+        <div class="demo-grid">
+          @for (account of demoAccounts; track account.email) {
+            <button class="demo-chip" type="button" (click)="fillDemo(account)">
+              <mat-icon class="demo-chip-icon">{{ account.icon }}</mat-icon>
+              <div class="demo-chip-text">
+                <span class="demo-chip-name">{{ account.label }}</span>
+                <span class="demo-chip-badge badge-{{ account.badge.toLowerCase() }}">{{ account.badge }}</span>
+              </div>
+            </button>
+          }
+        </div>
+      </div>
+
+      <p class="signup-cta">
+        Don't have an account? <a routerLink="/auth/register">Create one free</a>
+      </p>
+    </div>
+  </div>
+</div>

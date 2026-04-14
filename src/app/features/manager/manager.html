@@ -1,0 +1,247 @@
+<div class="manager-page">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
+  <div class="mgr-header-banner">
+    <div class="mgr-header-left">
+      <div class="mgr-header-avatar">{{ managerName[0] }}</div>
+      <div>
+        <h2 class="mgr-title">Welcome, {{ managerName }}</h2>
+        <p class="mgr-subtitle">Account Manager · Summit Valley Bank Private Banking</p>
+      </div>
+    </div>
+    <div class="mgr-stats-row">
+      <div class="mgr-stat">
+        <p class="mgr-stat-label">Clients</p>
+        <p class="mgr-stat-val">{{ clients().length }}</p>
+      </div>
+      <div class="mgr-stat-div"></div>
+      <div class="mgr-stat">
+        <p class="mgr-stat-label">Assets Managed</p>
+        <p class="mgr-stat-val">{{ totalAssetsManaged() }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Client Cards ────────────────────────────────────────────────────────── -->
+  <div class="clients-label">
+    <mat-icon>group</mat-icon>
+    <span>Your Clients ({{ clients().length }})</span>
+  </div>
+
+  <div class="clients-grid">
+    @for (client of clients(); track client.user.id) {
+      <div class="client-card">
+
+        <!-- Card Header -->
+        <div class="cc-header">
+          <div class="cc-avatar">{{ client.user.firstName[0] }}{{ client.user.lastName[0] }}</div>
+          <div class="cc-info">
+            <p class="cc-name">{{ client.user.firstName }} {{ client.user.lastName }}</p>
+            <p class="cc-email">{{ client.user.email }}</p>
+            <div class="cc-badges">
+              <span class="cc-badge country">{{ client.user.country === 'GB' ? '🇬🇧 UK' : '🇺🇸 US' }}</span>
+              <span class="cc-badge member">Since {{ client.user.createdAt | date:'MMM yyyy' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <mat-divider style="margin: 14px 0 12px" />
+
+        <!-- Accounts -->
+        <p class="cc-section-label"><mat-icon>account_balance_wallet</mat-icon> Accounts</p>
+        <div class="cc-accounts">
+          @for (acc of client.accounts; track acc.id) {
+            <div class="cc-account-row">
+              <div class="cc-acc-type">
+                <mat-icon>{{ acc.type === 'checking' ? 'account_balance_wallet' : 'savings' }}</mat-icon>
+                <span>{{ accountLabel(acc.type, acc.currency) }}</span>
+              </div>
+              <div class="cc-acc-right">
+                <span class="cc-acc-num">{{ acc.accountNumber }}</span>
+                <span class="cc-acc-balance">{{ fmt(acc.balance, acc.currency) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Total -->
+        <div class="cc-total-row">
+          <span class="cc-total-label">Total Portfolio</span>
+          <span class="cc-total-val">{{ fmt(client.totalBalance, client.currency) }}</span>
+        </div>
+
+        <mat-divider style="margin: 12px 0" />
+
+        <!-- Monthly Stats -->
+        <div class="cc-monthly">
+          <div class="cc-monthly-stat">
+            <mat-icon class="credit-icon">arrow_downward</mat-icon>
+            <div>
+              <p class="cc-monthly-label">Income (this month)</p>
+              <p class="cc-monthly-val credit">+{{ fmt(client.creditThisMonth, client.currency) }}</p>
+            </div>
+          </div>
+          <div class="cc-monthly-stat">
+            <mat-icon class="debit-icon">arrow_upward</mat-icon>
+            <div>
+              <p class="cc-monthly-label">Expenses (this month)</p>
+              <p class="cc-monthly-val debit">−{{ fmt(client.debitThisMonth, client.currency) }}</p>
+            </div>
+          </div>
+        </div>
+
+        <mat-divider style="margin: 12px 0" />
+
+        <!-- Recent Transactions -->
+        <p class="cc-section-label"><mat-icon>receipt_long</mat-icon> Recent Activity</p>
+        <div class="cc-txn-list">
+          @for (txn of client.recentTxns; track txn.id) {
+            <div class="cc-txn-row">
+              <div class="cc-txn-icon" [style.background]="txn.type === 'credit' ? 'var(--nb-primary-light)' : 'var(--nb-danger-bg)'">
+                <mat-icon [style.color]="txn.type === 'credit' ? 'var(--nb-primary)' : 'var(--nb-danger)'">{{ categoryIcon(txn.category) }}</mat-icon>
+              </div>
+              <div class="cc-txn-info">
+                <p class="cc-txn-desc">{{ txn.description }}</p>
+                <p class="cc-txn-date">{{ relativeDate(txn.date) }}</p>
+              </div>
+              <div class="cc-txn-right">
+                <span class="cc-txn-amount" [class.credit]="txn.type === 'credit'" [class.debit]="txn.type === 'debit'">
+                  {{ txn.type === 'credit' ? '+' : '−' }}{{ fmt(txn.amount, client.currency) }}
+                </span>
+                <span class="cc-txn-status" [class]="statusClass(txn.status)">{{ txn.status }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <mat-divider style="margin: 14px 0 12px" />
+
+        <!-- ── Transaction Restrictions ──────────────────────────────── -->
+        <div class="cc-restriction-section" [class.cc-restricted]="isClientBlocked(client.user.id)">
+          <div class="cc-restriction-header">
+            <div class="cc-restriction-header-left">
+              <div class="cc-restriction-icon" [class.active]="isClientBlocked(client.user.id)">
+                <mat-icon>{{ isClientBlocked(client.user.id) ? 'block' : 'swap_horiz' }}</mat-icon>
+              </div>
+              <div>
+                <p class="cc-restriction-title">Outgoing Transfers</p>
+                <p class="cc-restriction-sub">
+                  {{ isClientBlocked(client.user.id) ? 'Currently restricted' : 'Currently allowed' }}
+                </p>
+              </div>
+            </div>
+            <mat-slide-toggle
+              [checked]="isClientBlocked(client.user.id)"
+              (change)="toggleClientBlock(client.user.id, client.user.firstName + ' ' + client.user.lastName, $event.checked)"
+              color="warn"
+              matTooltip="{{ isClientBlocked(client.user.id) ? 'Allow transfers' : 'Block transfers' }}"
+            />
+          </div>
+
+          @if (isClientBlocked(client.user.id)) {
+            <div class="cc-restriction-msg-area">
+              <p class="cc-restriction-msg-label">
+                <mat-icon>chat_bubble_outline</mat-icon>
+                Denial message shown to customer
+              </p>
+              <textarea
+                class="cc-restriction-textarea"
+                rows="3"
+                [value]="getDraftMessage(client.user.id)"
+                (input)="setDraftMessage(client.user.id, $any($event.target).value)"
+                placeholder="Enter the message the customer will see when their transfer is declined…"
+              ></textarea>
+              <button
+                mat-stroked-button
+                class="cc-save-msg-btn"
+                (click)="saveRestrictionMessage(client.user.id, client.user.firstName)"
+              >
+                <mat-icon>save</mat-icon>
+                Save Message
+              </button>
+            </div>
+          }
+        </div>
+
+        <mat-divider style="margin: 14px 0 12px" />
+
+        <!-- ── Add Funds ────────────────────────────────────────── -->
+        <div class="cc-deposit-section">
+          <button
+            mat-stroked-button
+            class="cc-deposit-toggle-btn"
+            (click)="toggleDepositForm(client.user.id, client.accounts[0]?.id ?? '')"
+          >
+            <mat-icon>add_circle_outline</mat-icon>
+            {{ isDepositOpen(client.user.id) ? 'Cancel' : 'Add Funds' }}
+          </button>
+
+          @if (isDepositOpen(client.user.id)) {
+            <div class="cc-deposit-form">
+              <p class="cc-deposit-label">
+                <mat-icon>savings</mat-icon>
+                Deposit funds into client account
+              </p>
+
+              <div class="cc-deposit-row">
+                <div class="cc-deposit-field">
+                  <label class="cc-deposit-field-label">Target Account</label>
+                  <select
+                    class="cc-deposit-select"
+                    [value]="getDepositForm(client.user.id, client.accounts[0]?.id ?? '').accountId"
+                    (change)="setDepositField(client.user.id, 'accountId', $any($event.target).value)"
+                  >
+                    @for (acc of client.accounts; track acc.id) {
+                      <option [value]="acc.id">
+                        {{ accountLabel(acc.type, acc.currency) }} · {{ acc.accountNumber }} — {{ fmt(acc.balance, acc.currency) }}
+                      </option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <div class="cc-deposit-row">
+                <div class="cc-deposit-field">
+                  <label class="cc-deposit-field-label">Amount ({{ client.currency }})</label>
+                  <div class="cc-deposit-amount-wrap">
+                    <span class="cc-deposit-sym">{{ client.currency === 'GBP' ? '£' : '$' }}</span>
+                    <input
+                      class="cc-deposit-amount-input"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      placeholder="0.00"
+                      [value]="getDepositForm(client.user.id, client.accounts[0]?.id ?? '').amount"
+                      (input)="setDepositField(client.user.id, 'amount', $any($event.target).value)"
+                    />
+                  </div>
+                </div>
+                <div class="cc-deposit-field">
+                  <label class="cc-deposit-field-label">Note <span class="cc-deposit-opt">(optional)</span></label>
+                  <input
+                    class="cc-deposit-note-input"
+                    type="text"
+                    placeholder="e.g. Initial deposit, bonus credit…"
+                    [value]="getDepositForm(client.user.id, client.accounts[0]?.id ?? '').note"
+                    (input)="setDepositField(client.user.id, 'note', $any($event.target).value)"
+                  />
+                </div>
+              </div>
+
+              <button
+                mat-flat-button
+                class="cc-deposit-submit-btn"
+                (click)="submitDeposit(client.user.id, client.currency, client.user.firstName)"
+              >
+                <mat-icon>add</mat-icon>
+                Confirm Deposit
+              </button>
+            </div>
+          }
+        </div>
+
+      </div>
+    }
+  </div>
+
+</div>

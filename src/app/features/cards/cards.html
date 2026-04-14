@@ -1,0 +1,143 @@
+<div class="cards-page">
+
+  <!-- Page Header -->
+  <div class="cards-header">
+    <div class="cards-header-left">
+      <div class="cards-header-icon"><mat-icon>credit_card</mat-icon></div>
+      <div>
+        <h2 class="cards-title">Card Management</h2>
+        <p class="cards-sub">Manage your debit cards, limits and security settings</p>
+      </div>
+    </div>
+  </div>
+
+  @if (cards().length === 0) {
+    <div class="cards-empty">
+      <mat-icon>credit_card_off</mat-icon>
+      <p>No cards found on your account.</p>
+    </div>
+  }
+
+  <div class="cards-grid">
+    @for (card of cards(); track card.id) {
+      <div class="card-section">
+
+        <!-- Visual card -->
+        <div class="card-visual-wrap">
+          <div class="card-visual" [class]="networkClass(card.network)" [class.frozen]="card.status === 'frozen'" (click)="selectCard(card)">
+            <div class="card-chip"><mat-icon>memory</mat-icon></div>
+            <div class="card-number">•••• •••• •••• {{ card.last4 }}</div>
+            <div class="card-bottom">
+              <div>
+                <p class="card-label">Card Holder</p>
+                <p class="card-value">{{ card.cardholderName }}</p>
+              </div>
+              <div>
+                <p class="card-label">Expires</p>
+                <p class="card-value">{{ expiryStr(card) }}</p>
+              </div>
+              <div class="card-network">{{ card.network }}</div>
+            </div>
+            @if (card.status === 'frozen') {
+              <div class="card-frozen-overlay">
+                <mat-icon>ac_unit</mat-icon>
+                <span>Frozen</span>
+              </div>
+            }
+            @if (card.status === 'cancelled') {
+              <div class="card-frozen-overlay cancelled">
+                <mat-icon>block</mat-icon>
+                <span>Cancelled</span>
+              </div>
+            }
+          </div>
+
+          <!-- Status + quick actions -->
+          <div class="card-quick-actions">
+            <span class="card-status-chip" [class]="'chip-' + card.status">
+              <mat-icon>{{ card.status === 'active' ? 'check_circle' : card.status === 'frozen' ? 'ac_unit' : 'block' }}</mat-icon>
+              {{ card.status | titlecase }}
+            </span>
+
+            @if (card.status !== 'cancelled') {
+              <button class="card-action-btn freeze-btn" mat-stroked-button (click)="toggleFreeze(card)">
+                <mat-icon>{{ card.status === 'frozen' ? 'lock_open' : 'ac_unit' }}</mat-icon>
+                {{ card.status === 'frozen' ? 'Unfreeze' : 'Freeze Card' }}
+              </button>
+              <button class="card-action-btn report-btn" mat-stroked-button (click)="reportLost(card.id)" [disabled]="reportingId() === card.id">
+                @if (reportingId() === card.id) {
+                  <mat-spinner diameter="16"></mat-spinner>
+                } @else {
+                  <mat-icon>report_problem</mat-icon>
+                }
+                Report Lost
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Settings panel (shown for selected card) -->
+        @if (selectedId() === card.id && card.status !== 'cancelled') {
+          <div class="card-settings">
+
+            <!-- Spending limits -->
+            <div class="card-settings-section">
+              <p class="card-settings-title"><mat-icon>tune</mat-icon> Spending Limits</p>
+              <form [formGroup]="limitForm" (ngSubmit)="saveLimits()" class="limits-form">
+                <mat-form-field appearance="outline" class="limit-field">
+                  <mat-label>Daily Limit</mat-label>
+                  <span matTextPrefix>$&nbsp;</span>
+                  <input matInput type="number" formControlName="dailyLimit" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="limit-field">
+                  <mat-label>ATM Limit</mat-label>
+                  <span matTextPrefix>$&nbsp;</span>
+                  <input matInput type="number" formControlName="atmLimit" />
+                </mat-form-field>
+                <button type="submit" mat-flat-button class="limits-save-btn" [disabled]="saving()">
+                  @if (saving()) { <mat-spinner diameter="16"></mat-spinner> }
+                  @else { <mat-icon>save</mat-icon> }
+                  Save Limits
+                </button>
+              </form>
+            </div>
+
+            <!-- Toggles -->
+            <div class="card-settings-section">
+              <p class="card-settings-title"><mat-icon>security</mat-icon> Transaction Controls</p>
+              <div class="card-toggles">
+                <div class="card-toggle-row">
+                  <div class="toggle-info">
+                    <p class="toggle-label">Online Transactions</p>
+                    <p class="toggle-sub">Allow purchases on websites and apps</p>
+                  </div>
+                  <mat-slide-toggle [checked]="card.onlineTransactionsEnabled"
+                    (change)="toggleSetting(card.id, 'onlineTransactionsEnabled')"></mat-slide-toggle>
+                </div>
+                <div class="card-toggle-row">
+                  <div class="toggle-info">
+                    <p class="toggle-label">International Transactions</p>
+                    <p class="toggle-sub">Allow purchases outside your home country</p>
+                  </div>
+                  <mat-slide-toggle [checked]="card.internationalTransactionsEnabled"
+                    (change)="toggleSetting(card.id, 'internationalTransactionsEnabled')"></mat-slide-toggle>
+                </div>
+                <div class="card-toggle-row">
+                  <div class="toggle-info">
+                    <p class="toggle-label">Contactless Payments</p>
+                    <p class="toggle-sub">Tap to pay at supported terminals</p>
+                  </div>
+                  <mat-slide-toggle [checked]="card.contactlessEnabled"
+                    (change)="toggleSetting(card.id, 'contactlessEnabled')"></mat-slide-toggle>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        }
+
+      </div>
+    }
+  </div>
+
+</div>
