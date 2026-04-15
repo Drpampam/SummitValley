@@ -47,6 +47,7 @@ function buildTemplate(type, name, data) {
     case 'transfer_blocked': return transferBlockedTemplate(name, data);
     case 'deposit':          return depositTemplate(name, data);
     case 'bill_payment':     return billPaymentTemplate(name, data);
+    case 'welcome':          return welcomeTemplate(name, data);
     default: return null;
   }
 }
@@ -214,6 +215,24 @@ function depositTemplate(name, { amount, account, note, depositedBy, date } = {}
     ${alertBox('✅', 'Your account balance has been updated. You can view it in your dashboard.', '#f0fdf4', '#bbf7d0')}
   `;
   return { subject: `${amount} deposited into your account — Summit Valley Bank`, html: base(`${amount} has been deposited into your account`, body) };
+}
+
+// ── Welcome / Account Created ─────────────────────────────────────────────────
+function welcomeTemplate(name, { tempPassword } = {}) {
+  const body = `
+    ${greeting(name)}
+    <p style="margin:0 0 20px;font-size:14px;color:#555555;line-height:1.6;">Your Summit Valley Bank account has been created. Use the temporary password below to sign in for the first time. You'll be prompted to choose a new password immediately after logging in.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#660000,#CC0000);border-radius:12px;margin:0 0 20px;overflow:hidden;">
+      <tr><td style="padding:22px 26px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:12px;color:rgba(255,255,255,0.65);text-transform:uppercase;letter-spacing:0.6px;font-weight:600;">Your Temporary Password</p>
+        <p style="margin:0;font-size:28px;font-weight:800;color:#FFCD41;font-family:monospace;letter-spacing:3px;">${tempPassword || '—'}</p>
+        <p style="margin:8px 0 0;font-size:11px;color:rgba(255,255,255,0.55);">This password must be changed on first login</p>
+      </td></tr>
+    </table>
+    ${alertBox('🔑', '<strong>Next steps:</strong> Visit the Summit Valley Bank login page, enter your email and this temporary password, then follow the prompts to set a permanent password of your choice.', '#fffbeb', '#FEF08A')}
+    ${alertBox('🔒', 'If you did not request this account, please contact Summit Valley Bank support immediately.', '#fff8f8', '#FFCCCC')}
+  `;
+  return { subject: 'Welcome to Summit Valley Bank — your account is ready', html: base('Your new account is ready. Sign in with your temporary password.', body) };
 }
 
 // ── Bill Payment Confirmation ─────────────────────────────────────────────────

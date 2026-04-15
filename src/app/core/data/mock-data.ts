@@ -11,12 +11,11 @@ import { AccountAlert } from '../models/alert.model';
 
 // ── Credentials (email → password) ────────────────────────────────────────────
 export const MOCK_CREDENTIALS: Record<string, string> = {
-  'alex.morgan@summitvalleybank.com':   'Alex@1234',
-  'james.wilson@summitvalleybank.com':  'James@1234',
-  'priya.patel@summitvalleybank.com':   'Priya@1234',
-  'sarah.chen@summitvalleybank.com':    'Sarah@1234',
-  'david.okafor@summitvalleybank.com':  'David@1234',
-  'admin@summitvalleybank.com':         'Admin@1234',
+  'johnziland@gmail.com':       'Ziland@1234',
+  'johnziland@yahoo.com':       'Ziland@4321',
+  'omotoyejohn2@gmail.com':     'Omotoye@123',
+  'john.omotoye@yahoo.com':     'Manager@123',
+  'johnomotoye@gmail.com':      'Admin@1234',
 };
 
 // ── Users ──────────────────────────────────────────────────────────────────────
@@ -24,9 +23,9 @@ export const MOCK_USERS: User[] = [
   // ── Regular Customers ──────────────────────────────────────────────────────
   {
     id: 'user-001',
-    firstName: 'Alex',
-    lastName: 'Morgan',
-    email: 'alex.morgan@summitvalleybank.com',
+    firstName: 'John',
+    lastName: 'Ziland',
+    email: 'johnziland@gmail.com',
     phone: '+1 555 234 5678',
     address: '123 Main Street',
     city: 'New York',
@@ -39,9 +38,9 @@ export const MOCK_USERS: User[] = [
   },
   {
     id: 'user-002',
-    firstName: 'James',
-    lastName: 'Wilson',
-    email: 'james.wilson@summitvalleybank.com',
+    firstName: 'John',
+    lastName: 'Ziland',
+    email: 'johnziland@yahoo.com',
     phone: '+44 20 7946 0321',
     address: '14 Baker Street',
     city: 'London',
@@ -54,9 +53,9 @@ export const MOCK_USERS: User[] = [
   },
   {
     id: 'user-003',
-    firstName: 'Priya',
-    lastName: 'Patel',
-    email: 'priya.patel@summitvalleybank.com',
+    firstName: 'John',
+    lastName: 'Omotoye',
+    email: 'omotoyejohn2@gmail.com',
     phone: '+1 415 678 9012',
     address: '456 Market Street',
     city: 'San Francisco',
@@ -68,12 +67,12 @@ export const MOCK_USERS: User[] = [
     createdAt: '2023-06-10T00:00:00Z',
   },
 
-  // ── Account Managers ───────────────────────────────────────────────────────
+  // ── Account Manager ────────────────────────────────────────────────────────
   {
     id: 'mgr-001',
-    firstName: 'Sarah',
-    lastName: 'Chen',
-    email: 'sarah.chen@summitvalleybank.com',
+    firstName: 'John',
+    lastName: 'Omotoye',
+    email: 'john.omotoye@yahoo.com',
     phone: '+1 212 555 0178',
     address: '789 Fifth Avenue',
     city: 'New York',
@@ -82,32 +81,16 @@ export const MOCK_USERS: User[] = [
     country: 'US',
     locale: 'en-US',
     role: 'account_manager',
-    managedUserIds: ['user-001', 'user-002'],
+    managedUserIds: ['user-001', 'user-002', 'user-003'],
     createdAt: '2022-06-01T00:00:00Z',
-  },
-  {
-    id: 'mgr-002',
-    firstName: 'David',
-    lastName: 'Okafor',
-    email: 'david.okafor@summitvalleybank.com',
-    phone: '+1 415 555 0234',
-    address: '321 California Street',
-    city: 'San Francisco',
-    state: 'CA',
-    zip: '94111',
-    country: 'US',
-    locale: 'en-US',
-    role: 'account_manager',
-    managedUserIds: ['user-003'],
-    createdAt: '2022-09-15T00:00:00Z',
   },
 
   // ── Super Admin ────────────────────────────────────────────────────────────
   {
     id: 'admin-001',
-    firstName: 'Admin',
-    lastName: 'Summit Valley Bank',
-    email: 'admin@summitvalleybank.com',
+    firstName: 'John',
+    lastName: 'Omotoye',
+    email: 'johnomotoye@gmail.com',
     phone: '+1 800 639 2265',
     address: '1 Finance Plaza',
     city: 'New York',
@@ -212,9 +195,9 @@ export const MOCK_BILL_PAYMENTS: BillPayment[] = [
 
 // ── Cards ──────────────────────────────────────────────────────────────────────
 export const MOCK_CARDS: DebitCard[] = [
-  { id: 'card-001', userId: 'user-001', accountId: 'acc-001', last4: '4521', network: 'Visa',       expiryMonth: 9,  expiryYear: 2028, cardholderName: 'ALEX MORGAN',  status: 'active', dailyLimit: 2500, atmLimit: 1000, onlineTransactionsEnabled: true,  internationalTransactionsEnabled: false, contactlessEnabled: true,  issuedAt: '2023-01-15T00:00:00Z' },
-  { id: 'card-002', userId: 'user-002', accountId: 'acc-003', last4: '2847', network: 'Mastercard', expiryMonth: 6,  expiryYear: 2027, cardholderName: 'JAMES WILSON', status: 'active', dailyLimit: 2000, atmLimit: 500,  onlineTransactionsEnabled: true,  internationalTransactionsEnabled: true,  contactlessEnabled: true,  issuedAt: '2023-03-20T00:00:00Z' },
-  { id: 'card-003', userId: 'user-003', accountId: 'acc-005', last4: '9034', network: 'Visa',       expiryMonth: 12, expiryYear: 2026, cardholderName: 'PRIYA PATEL',  status: 'active', dailyLimit: 1500, atmLimit: 500,  onlineTransactionsEnabled: true,  internationalTransactionsEnabled: false, contactlessEnabled: false, issuedAt: '2023-06-10T00:00:00Z' },
+  { id: 'card-001', userId: 'user-001', accountId: 'acc-001', last4: '4521', network: 'Visa',       expiryMonth: 9,  expiryYear: 2028, cardholderName: 'JOHN ZILAND',  status: 'active', dailyLimit: 2500, atmLimit: 1000, onlineTransactionsEnabled: true,  internationalTransactionsEnabled: false, contactlessEnabled: true,  issuedAt: '2023-01-15T00:00:00Z' },
+  { id: 'card-002', userId: 'user-002', accountId: 'acc-003', last4: '2847', network: 'Mastercard', expiryMonth: 6,  expiryYear: 2027, cardholderName: 'JOHN ZILAND',  status: 'active', dailyLimit: 2000, atmLimit: 500,  onlineTransactionsEnabled: true,  internationalTransactionsEnabled: true,  contactlessEnabled: true,  issuedAt: '2023-03-20T00:00:00Z' },
+  { id: 'card-003', userId: 'user-003', accountId: 'acc-005', last4: '9034', network: 'Visa',       expiryMonth: 12, expiryYear: 2026, cardholderName: 'JOHN OMOTOYE', status: 'active', dailyLimit: 1500, atmLimit: 500,  onlineTransactionsEnabled: true,  internationalTransactionsEnabled: false, contactlessEnabled: false, issuedAt: '2023-06-10T00:00:00Z' },
 ];
 
 // ── Statements ─────────────────────────────────────────────────────────────────

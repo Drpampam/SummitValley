@@ -457,6 +457,158 @@
   mat-icon { font-size: 16px; }
 }
 
+// ── Tab Toolbar ───────────────────────────────────────────────────────────────
+.tab-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.create-user-btn {
+  border-radius: var(--nb-radius-md) !important;
+  background: linear-gradient(135deg, var(--nb-primary) 0%, var(--nb-primary-dark) 100%) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(204,0,0,.25) !important;
+  transition: all 0.2s ease !important;
+  mat-icon { font-size: 18px; }
+  &:hover { transform: translateY(-1px) !important; box-shadow: 0 6px 18px rgba(204,0,0,.35) !important; }
+}
+
+// ── Create User Form Card ─────────────────────────────────────────────────────
+.cu-form-card {
+  background: var(--nb-card-bg);
+  border: 1px solid var(--nb-border);
+  border-radius: var(--nb-radius-lg);
+  margin-bottom: 16px;
+  overflow: hidden;
+  animation: fadeInUp .2s ease-out both;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--nb-primary) 0%, var(--nb-lemon) 100%);
+  }
+}
+
+.cu-form-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 20px 24px 16px;
+}
+
+.cu-form-icon {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: var(--nb-primary-light);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  mat-icon { font-size: 22px; color: var(--nb-primary); }
+}
+
+.cu-form-title { margin: 0 0 3px; font-size: 16px; font-weight: 700; }
+.cu-form-sub   { margin: 0; font-size: 12px; color: var(--nb-text-muted); }
+
+.cu-form-body {
+  padding: 0 24px 24px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.cu-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cu-field {
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.cu-label {
+  font-size: 12px; font-weight: 600; color: var(--nb-text-secondary);
+  .req      { color: var(--nb-danger); }
+}
+
+.cu-optional { font-weight: 400; color: var(--nb-text-muted); }
+
+.cu-actions {
+  display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;
+}
+
+.cu-submit-btn {
+  border-radius: var(--nb-radius-md) !important;
+  background: linear-gradient(135deg, var(--nb-primary) 0%, var(--nb-primary-dark) 100%) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  gap: 6px;
+  box-shadow: 0 4px 10px rgba(204,0,0,.2) !important;
+  mat-icon { font-size: 17px; }
+  &:hover { box-shadow: 0 6px 16px rgba(204,0,0,.3) !important; }
+}
+
+// ── Create User Result Card ───────────────────────────────────────────────────
+.cu-result-card {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: var(--nb-radius-lg);
+  margin-bottom: 16px;
+  overflow: hidden;
+  animation: fadeInUp .2s ease-out both;
+}
+
+.cu-result-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  background: #dcfce7;
+  border-bottom: 1px solid #bbf7d0;
+}
+
+.cu-result-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #16a34a;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  mat-icon { font-size: 20px; color: #fff; }
+}
+
+.cu-result-title { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: #15803d; }
+.cu-result-sub   { margin: 0; font-size: 12px; color: #166534; font-family: monospace; }
+.cu-dismiss-btn  { margin-left: auto; mat-icon { font-size: 18px; color: #15803d; } }
+
+.cu-result-body {
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.cu-temp-pw-label { font-size: 12px; font-weight: 600; color: #166534; }
+
+.cu-temp-pw-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+
+.cu-temp-pw {
+  font-family: monospace; font-size: 18px; font-weight: 700;
+  letter-spacing: 3px; color: #15803d;
+  background: #fff; border: 1px solid #86efac;
+  border-radius: var(--nb-radius-sm); padding: 6px 14px;
+}
+
+.cu-copy-btn {
+  border-color: #86efac !important; color: #15803d !important;
+  font-size: 12px !important; gap: 4px;
+  border-radius: var(--nb-radius-sm) !important;
+  mat-icon { font-size: 15px; }
+  &:hover { background: #dcfce7 !important; }
+}
+
+.cu-temp-pw-hint {
+  margin: 0; font-size: 12px; color: #166534; line-height: 1.5;
+}
+
 // ── Responsive ────────────────────────────────────────────────────────────────
 @media (max-width: 1024px) {
   .admin-page { gap: 16px; }

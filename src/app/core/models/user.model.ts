@@ -17,6 +17,7 @@ export interface User {
   managedUserIds?: string[];  // account_manager only
   avatarUrl?: string;
   createdAt: string;
+  mustChangePassword?: boolean;
 }
 
 export interface LoginCredentials {

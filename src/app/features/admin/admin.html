@@ -72,7 +72,7 @@
     <div class="stat-spacer"></div>
     <div class="stat-managers">
       <mat-icon>badge</mat-icon>
-      <span>{{ allManagers.length }} Account Managers</span>
+      <span>{{ allManagers().length }} Account Managers</span>
     </div>
   </div>
 
@@ -87,8 +87,126 @@
       </ng-template>
 
       <div class="tab-body">
+
+        <!-- ── Create User panel (success result) ──────────────────────── -->
+        @if (createdUserResult()) {
+          <div class="cu-result-card">
+            <div class="cu-result-head">
+              <div class="cu-result-icon"><mat-icon>check_circle</mat-icon></div>
+              <div>
+                <p class="cu-result-title">User created successfully</p>
+                <p class="cu-result-sub">{{ createdUserResult()!.user.email }}</p>
+              </div>
+              <button mat-icon-button class="cu-dismiss-btn" (click)="dismissCreatedResult()" matTooltip="Dismiss">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+            <div class="cu-result-body">
+              <div class="cu-temp-pw-label">Temporary Password — share this with the user:</div>
+              <div class="cu-temp-pw-row">
+                <code class="cu-temp-pw">{{ createdUserResult()!.tempPassword }}</code>
+                <button mat-stroked-button class="cu-copy-btn" (click)="copyTempPassword()">
+                  <mat-icon>content_copy</mat-icon>
+                  Copy
+                </button>
+              </div>
+              <p class="cu-temp-pw-hint">The user must change this password on first login. A welcome email has been sent.</p>
+            </div>
+          </div>
+        }
+
+        <!-- ── Create User form ─────────────────────────────────────────── -->
+        @if (showCreateUserForm()) {
+          <div class="cu-form-card">
+            <div class="cu-form-head">
+              <div class="cu-form-icon"><mat-icon>person_add</mat-icon></div>
+              <div>
+                <h3 class="cu-form-title">Create New User</h3>
+                <p class="cu-form-sub">A temporary password will be generated and emailed to the new user.</p>
+              </div>
+              <button mat-icon-button (click)="cancelCreateUser()" matTooltip="Cancel">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
+            <form [formGroup]="createUserForm" (ngSubmit)="submitCreateUser()" class="cu-form-body">
+              <div class="cu-two-col">
+                <div class="cu-field">
+                  <label class="cu-label">First Name <span class="req">*</span></label>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <input matInput formControlName="firstName" placeholder="e.g. Jane" />
+                    <mat-icon matSuffix>person</mat-icon>
+                  </mat-form-field>
+                </div>
+                <div class="cu-field">
+                  <label class="cu-label">Last Name <span class="req">*</span></label>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <input matInput formControlName="lastName" placeholder="e.g. Smith" />
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="cu-field">
+                <label class="cu-label">Email Address <span class="req">*</span></label>
+                <mat-form-field appearance="outline" class="full-width">
+                  <input matInput type="email" formControlName="email" placeholder="user@example.com" />
+                  <mat-icon matSuffix>mail_outline</mat-icon>
+                </mat-form-field>
+              </div>
+
+              <div class="cu-two-col">
+                <div class="cu-field">
+                  <label class="cu-label">Role <span class="req">*</span></label>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-select formControlName="role">
+                      <mat-option value="user">Customer</mat-option>
+                      <mat-option value="account_manager">Account Manager</mat-option>
+                    </mat-select>
+                    <mat-icon matSuffix>badge</mat-icon>
+                  </mat-form-field>
+                </div>
+                <div class="cu-field">
+                  <label class="cu-label">Country <span class="req">*</span></label>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-select formControlName="country">
+                      <mat-option value="US">🇺🇸 United States (USD)</mat-option>
+                      <mat-option value="GB">🇬🇧 United Kingdom (GBP)</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="cu-field">
+                <label class="cu-label">Phone <span class="cu-optional">(optional)</span></label>
+                <mat-form-field appearance="outline" class="full-width">
+                  <input matInput formControlName="phone" placeholder="+1 555 000 0000" />
+                  <mat-icon matSuffix>phone</mat-icon>
+                </mat-form-field>
+              </div>
+
+              <div class="cu-actions">
+                <button mat-stroked-button type="button" (click)="cancelCreateUser()">Cancel</button>
+                <button mat-flat-button class="cu-submit-btn" type="submit" [disabled]="createUserForm.invalid">
+                  <mat-icon>person_add</mat-icon>
+                  Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        }
+
+        <!-- ── Tab toolbar ───────────────────────────────────────────────── -->
+        <div class="tab-toolbar">
+          @if (!showCreateUserForm() && !createdUserResult()) {
+            <button mat-flat-button class="create-user-btn" (click)="openCreateUserForm()">
+              <mat-icon>person_add</mat-icon>
+              Create User
+            </button>
+          }
+        </div>
+
         <div class="section-card">
-          <table mat-table [dataSource]="allUsers" class="admin-table">
+          <table mat-table [dataSource]="allUsers()" class="admin-table">
 
             <!-- # -->
             <ng-container matColumnDef="index">
@@ -203,7 +321,7 @@
                     [value]="depositAccountId()"
                     (change)="depositAccountId.set($any($event.target).value)"
                   >
-                    @for (acc of getAccountsByUserId(depositUserId()!); track acc.id) {
+                    @for (acc of getAccountsByUserId(depositUserId() ?? ''); track acc.id) {
                       <option [value]="acc.id">
                         {{ acc.type | titlecase }} · {{ acc.accountNumber }} — {{ fmtAmount(acc.balance, acc.currency) }}
                       </option>
@@ -272,7 +390,7 @@
             <mat-label>Filter by customer</mat-label>
             <mat-select [ngModel]="filterUserId()" (ngModelChange)="filterUserId.set($event)">
               <mat-option value="">All Customers</mat-option>
-              @for (u of allUsers; track u.id) {
+              @for (u of allUsers(); track u.id) {
                 <mat-option [value]="u.id">{{ u.firstName }} {{ u.lastName }}</mat-option>
               }
             </mat-select>
@@ -451,7 +569,7 @@
                   <mat-form-field appearance="outline" class="full-width">
                     <mat-select formControlName="targetUserId">
                       <mat-option value="">All Customers (Global)</mat-option>
-                      @for (u of allUsers; track u.id) {
+                      @for (u of allUsers(); track u.id) {
                         <mat-option [value]="u.id">{{ u.firstName }} {{ u.lastName }}</mat-option>
                       }
                     </mat-select>
@@ -583,7 +701,7 @@
 
       <div class="tab-body">
         <div class="managers-grid">
-          @for (mgr of allManagers; track mgr.id) {
+          @for (mgr of allManagers(); track mgr.id) {
             <div class="manager-card">
               <div class="mgr-header">
                 <div class="mgr-avatar">{{ mgr.firstName[0] }}{{ mgr.lastName[0] }}</div>

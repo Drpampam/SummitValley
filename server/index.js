@@ -49,11 +49,12 @@ app.listen(PORT, () => {
 
 function buildTemplate(type, name, data) {
   switch (type) {
-    case 'login':          return loginTemplate(name, data);
-    case 'transfer':       return transferTemplate(name, data);
+    case 'login':            return loginTemplate(name, data);
+    case 'transfer':         return transferTemplate(name, data);
     case 'transfer_blocked': return transferBlockedTemplate(name, data);
-    case 'deposit':        return depositTemplate(name, data);
-    case 'bill_payment':   return billPaymentTemplate(name, data);
+    case 'deposit':          return depositTemplate(name, data);
+    case 'bill_payment':     return billPaymentTemplate(name, data);
+    case 'welcome':          return welcomeTemplate(name, data);
     default: return null;
   }
 }
@@ -343,4 +344,38 @@ function billPaymentTemplate(name, { biller, amount, confirmation, scheduledDate
     ${ctaButton('Manage Bill Payments')}
   `;
   return { subject: `Bill payment of ${amount} to ${biller} scheduled — Summit Valley Bank`, html: base(`Your payment of ${amount} to ${biller} is scheduled`, body) };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 6. Welcome / Account Created
+// ════════════════════════════════════════════════════════════════════════════
+function welcomeTemplate(name, { tempPassword } = {}) {
+  const body = `
+    ${greeting(name)}
+    <p style="margin:0 0 20px;font-size:14px;color:#555555;line-height:1.6;">
+      Welcome to Summit Valley Bank! Your account has been created. Use the temporary password below to sign in for the first time — you'll be prompted to choose a permanent password immediately after logging in.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#660000,#CC0000);border-radius:12px;margin:0 0 20px;overflow:hidden;">
+      <tr><td style="padding:26px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:12px;color:rgba(255,255,255,0.65);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Your Temporary Password</p>
+        <p style="margin:0;font-size:30px;font-weight:800;color:#FFCD41;font-family:monospace;letter-spacing:4px;">${tempPassword || '—'}</p>
+        <p style="margin:10px 0 0;font-size:11px;color:rgba(255,255,255,0.5);">Must be changed on first login</p>
+      </td></tr>
+    </table>
+
+    ${detailTable(
+      infoRow('Email', name) +
+      infoRow('Status', '<span style="color:#15803d;font-weight:700;">Active</span>')
+    )}
+
+    ${alertBox('🔑', '<strong>Next step:</strong> Visit the Summit Valley Bank login page, enter your email address and the temporary password above, then follow the prompts to set a new permanent password.', '#fffbeb', '#FEF08A')}
+    ${alertBox('🔒', 'If you did not expect this account, please contact Summit Valley Bank support immediately.', '#fff8f8', '#FFCCCC')}
+
+    ${ctaButton('Sign In Now')}
+  `;
+  return {
+    subject: 'Welcome to Summit Valley Bank — your account is ready',
+    html: base('Your new Summit Valley Bank account is ready. Sign in with your temporary password.', body),
+  };
 }

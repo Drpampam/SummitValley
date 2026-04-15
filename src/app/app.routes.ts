@@ -38,10 +38,13 @@ export const routes: Routes = [
       { path: 'alerts',        loadComponent: () => import('./features/alerts/alerts').then(m => m.AlertsComponent) },
 
       // Admin console
-      { path: 'admin',   canActivate: [adminGuard],   loadComponent: () => import('./features/admin/admin').then(m => m.AdminComponent) },
+      { path: 'admin',           canActivate: [adminGuard],   loadComponent: () => import('./features/admin/admin').then(m => m.AdminComponent) },
 
       // Manager panel
-      { path: 'manager', canActivate: [managerGuard], loadComponent: () => import('./features/manager/manager').then(m => m.ManagerComponent) },
+      { path: 'manager',         canActivate: [managerGuard], loadComponent: () => import('./features/manager/manager').then(m => m.ManagerComponent) },
+
+      // Change password (forced after first login with temp password)
+      { path: 'change-password', loadComponent: () => import('./features/auth/change-password/change-password').then(m => m.ChangePasswordComponent) },
     ],
   },
 

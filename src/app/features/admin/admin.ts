@@ -16,13 +16,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { AccountService } from '../../core/services/account.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { PolicyService } from '../../core/services/policy.service';
+import { EmailService } from '../../core/services/email.service';
 import { StorageService } from '../../core/services/storage.service';
 import { LocaleService } from '../../core/services/locale.service';
 import { ToastService } from '../../core/services/toast.service';
 import { User, UserRole } from '../../core/models/user.model';
 import { Transaction, TransactionStatus, TransactionPolicy, PolicyRuleType } from '../../core/models/transaction.model';
 import { Account } from '../../core/models/account.model';
-import { MOCK_USERS, MOCK_ACCOUNTS, MOCK_TRANSACTIONS, getManagerForUser, getAccountsByUserId } from '../../core/data/mock-data';
+import { MOCK_ACCOUNTS, MOCK_TRANSACTIONS, getManagerForUser, getAccountsByUserId } from '../../core/data/mock-data';
 
 export interface AdminTxnRow extends Transaction {
   userName: string;
@@ -48,9 +49,10 @@ export class AdminComponent {
   txnSvc        = inject(TransactionService);
   locSvc        = inject(LocaleService);
   policySvc     = inject(PolicyService);
-  private storage = inject(StorageService);
-  private fb    = inject(FormBuilder);
-  private toast = inject(ToastService);
+  private emailSvc = inject(EmailService);
+  private storage  = inject(StorageService);
+  private fb       = inject(FormBuilder);
+  private toast    = inject(ToastService);
 
   // ── Filters ───────────────────────────────────────────────────────────────
   filterUserId  = signal<string>('');
@@ -69,15 +71,20 @@ export class AdminComponent {
   });
 
   // ── Data ──────────────────────────────────────────────────────────────────
-  readonly allUsers = MOCK_USERS.filter(u => u.role === 'user');
-  readonly allManagers = MOCK_USERS.filter(u => u.role === 'account_manager');
+  readonly allUsers    = computed(() => this.auth.allUsersReactive().filter(u => u.role === 'user'));
+  readonly allManagers = computed(() => this.auth.allUsersReactive().filter(u => u.role === 'account_manager'));
+
+  private _getUser(id: string): User | undefined {
+    return this.auth.allUsersReactive().find(u => u.id === id);
+  }
 
   readonly txnRows = computed<AdminTxnRow[]>(() => {
     const allTxns = this.txnSvc.allTransactions;
     return allTxns
       .map(t => {
-        const acc = MOCK_ACCOUNTS.find(a => a.id === t.accountId);
-        const user = MOCK_USERS.find(u => u.id === acc?.userId);
+        const acc  = this.accSvc.accounts().find(a => a.id === t.accountId)
+                  ?? MOCK_ACCOUNTS.find(a => a.id === t.accountId);
+        const user = this._getUser(acc?.userId ?? '');
         return {
           ...t,
           userName:  user ? `${user.firstName} ${user.lastName}` : '—',
@@ -88,7 +95,8 @@ export class AdminComponent {
       .filter(t => {
         const uid = this.filterUserId();
         const st  = this.filterStatus();
-        const acc = MOCK_ACCOUNTS.find(a => a.id === t.accountId);
+        const acc = this.accSvc.accounts().find(a => a.id === t.accountId)
+                 ?? MOCK_ACCOUNTS.find(a => a.id === t.accountId);
         if (uid && acc?.userId !== uid) return false;
         if (st  && t.status !== st) return false;
         return true;
@@ -100,14 +108,93 @@ export class AdminComponent {
   readonly stats = computed(() => {
     const txns = this.txnSvc.allTransactions;
     return {
-      totalUsers:     this.allUsers.length,
-      totalAccounts:  MOCK_ACCOUNTS.length,
+      totalUsers:     this.allUsers().length,
+      totalAccounts:  this.accSvc.accounts().length,
       pending:        txns.filter(t => t.status === 'pending').length,
       failed:         txns.filter(t => t.status === 'failed').length,
       volume:         txns.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0),
       activePolicies: this.policySvc.activePolicies().length,
     };
   });
+
+  // ── Create User ───────────────────────────────────────────────────────────
+  showCreateUserForm  = signal(false);
+  createdUserResult   = signal<{ user: User; tempPassword: string } | null>(null);
+
+  createUserForm = this.fb.group({
+    firstName: ['', Validators.required],
+    lastName:  ['', Validators.required],
+    email:     ['', [Validators.required, Validators.email]],
+    role:      ['user' as UserRole, Validators.required],
+    country:   ['US', Validators.required],
+    phone:     [''],
+  });
+
+  openCreateUserForm(): void {
+    this.createUserForm.reset({ role: 'user', country: 'US', firstName: '', lastName: '', email: '', phone: '' });
+    this.createdUserResult.set(null);
+    this.showCreateUserForm.set(true);
+  }
+
+  cancelCreateUser(): void {
+    this.showCreateUserForm.set(false);
+    this.createdUserResult.set(null);
+  }
+
+  submitCreateUser(): void {
+    if (this.createUserForm.invalid) return;
+    const v = this.createUserForm.value;
+    const email = v.email!.toLowerCase().trim();
+
+    // Guard: email already exists
+    if (this.auth.allUsersReactive().some(u => u.email === email)) {
+      this.toast.error('A user with this email already exists.');
+      return;
+    }
+
+    const result = this.auth.createUser({
+      firstName: v.firstName!,
+      lastName:  v.lastName!,
+      email,
+      role:      v.role as UserRole,
+      country:   v.country!,
+      phone:     v.phone ?? undefined,
+    });
+
+    // Create default checking + savings accounts
+    const now      = new Date().toISOString();
+    const ts       = Date.now();
+    const currency = result.user.country === 'GB' ? 'GBP' : 'USD';
+    this.accSvc.addAccount({
+      id: `acc-${ts}-1`, userId: result.user.id,
+      type: 'checking',
+      accountNumber: '****' + String(Math.floor(1000 + Math.random() * 9000)),
+      balance: 0, availableBalance: 0, currency, createdAt: now,
+    });
+    this.accSvc.addAccount({
+      id: `acc-${ts}-2`, userId: result.user.id,
+      type: 'savings',
+      accountNumber: '****' + String(Math.floor(1000 + Math.random() * 9000)),
+      balance: 0, availableBalance: 0, currency, createdAt: now,
+    });
+
+    // Fire welcome email
+    this.emailSvc.sendWelcomeEmail(result.user.email, result.user.firstName, result.tempPassword);
+
+    this.createdUserResult.set(result);
+    this.showCreateUserForm.set(false);
+    this.toast.success(`${result.user.firstName} ${result.user.lastName} created successfully`);
+  }
+
+  copyTempPassword(): void {
+    const result = this.createdUserResult();
+    if (result) {
+      navigator.clipboard.writeText(result.tempPassword).catch(() => {});
+      this.toast.info('Temporary password copied to clipboard');
+    }
+  }
+
+  dismissCreatedResult(): void { this.createdUserResult.set(null); }
 
   // ── Add Funds / Deposit ───────────────────────────────────────────────────
   depositUserId    = signal<string | null>(null);
@@ -126,12 +213,12 @@ export class AdminComponent {
   closeDepositPanel(): void { this.depositUserId.set(null); }
 
   getDepositUserName(): string {
-    const u = MOCK_USERS.find(u => u.id === this.depositUserId());
+    const u = this._getUser(this.depositUserId() ?? '');
     return u ? `${u.firstName} ${u.lastName}` : '';
   }
 
   getDepositCurrencySymbol(): string {
-    const acc = MOCK_ACCOUNTS.find(a => a.id === this.depositAccountId());
+    const acc = this.accSvc.accounts().find(a => a.id === this.depositAccountId());
     return acc?.currency === 'GBP' ? '£' : '$';
   }
 
@@ -143,8 +230,8 @@ export class AdminComponent {
       this.toast.error('Please select an account and enter a valid amount.');
       return;
     }
-    const acc = MOCK_ACCOUNTS.find(a => a.id === accountId);
-    const user = MOCK_USERS.find(u => u.id === userId);
+    const acc  = this.accSvc.accounts().find(a => a.id === accountId);
+    const user = this._getUser(userId);
     const currency = (acc?.currency ?? 'USD') as 'USD' | 'GBP';
     this.txnSvc.depositToAccount(accountId, amount, this.depositNote() || undefined);
     const fmtAmt = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(amount);
@@ -158,8 +245,14 @@ export class AdminComponent {
   readonly managerCols = ['name', 'email', 'clients'];
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  getManagerForUser(userId: string): User | undefined { return getManagerForUser(userId); }
-  getAccountsByUserId(userId: string): Account[]      { return getAccountsByUserId(userId); }
+  getManagerForUser(userId: string): User | undefined {
+    return this.auth.allUsersReactive().find(
+      u => u.role === 'account_manager' && u.managedUserIds?.includes(userId)
+    );
+  }
+  getAccountsByUserId(userId: string): Account[] {
+    return this.accSvc.accounts().filter(a => a.userId === userId);
+  }
 
   getUserBalance(userId: string): string {
     const accs = getAccountsByUserId(userId);
@@ -178,7 +271,9 @@ export class AdminComponent {
   }
 
   getManagedUsers(manager: User): User[] {
-    return (manager.managedUserIds ?? []).map(id => MOCK_USERS.find(u => u.id === id)!).filter(Boolean);
+    return (manager.managedUserIds ?? [])
+      .map(id => this._getUser(id)!)
+      .filter(Boolean);
   }
 
   onStatusChange(txnId: string, status: TransactionStatus): void {
@@ -201,7 +296,7 @@ export class AdminComponent {
   // ── Policy Management ─────────────────────────────────────────────────────
 
   getUserName(userId: string): string {
-    const u = MOCK_USERS.find(u => u.id === userId);
+    const u = this._getUser(userId);
     return u ? `${u.firstName} ${u.lastName}` : 'Unknown';
   }
 

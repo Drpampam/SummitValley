@@ -97,6 +97,16 @@ export class EmailService {
     });
   }
 
+  // ── Welcome / account created ─────────────────────────────────────────────
+  sendWelcomeEmail(to: string, name: string, tempPassword: string): void {
+    this.send({
+      type: 'welcome',
+      to,
+      name,
+      data: { tempPassword },
+    });
+  }
+
   // ── Bill payment confirmation ──────────────────────────────────────────────
   sendBillPayConfirmation(
     to: string,

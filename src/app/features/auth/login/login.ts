@@ -44,12 +44,11 @@ export class LoginComponent {
   }
 
   readonly demoAccounts: DemoAccount[] = [
-    { label: 'Alex Morgan',   email: 'alex.morgan@summitvalleybank.com',  password: 'Alex@1234',  icon: 'person',               badge: 'Customer'  },
-    { label: 'James Wilson',  email: 'james.wilson@summitvalleybank.com', password: 'James@1234', icon: 'person',               badge: 'Customer'  },
-    { label: 'Priya Patel',   email: 'priya.patel@summitvalleybank.com',  password: 'Priya@1234', icon: 'person',               badge: 'Customer'  },
-    { label: 'Sarah Chen',    email: 'sarah.chen@summitvalleybank.com',   password: 'Sarah@1234', icon: 'badge',                badge: 'Manager'   },
-    { label: 'David Okafor',  email: 'david.okafor@summitvalleybank.com', password: 'David@1234', icon: 'badge',                badge: 'Manager'   },
-    { label: 'Admin',         email: 'admin@summitvalleybank.com',        password: 'Admin@1234', icon: 'admin_panel_settings', badge: 'Admin'     },
+    { label: 'John Ziland (Gmail)',  email: 'johnziland@gmail.com',    password: 'Ziland@1234',  icon: 'person',               badge: 'Customer'  },
+    { label: 'John Ziland (Yahoo)',  email: 'johnziland@yahoo.com',    password: 'Ziland@4321',  icon: 'person',               badge: 'Customer'  },
+    { label: 'John Omotoye',         email: 'omotoyejohn2@gmail.com',  password: 'Omotoye@123',  icon: 'person',               badge: 'Customer'  },
+    { label: 'Manager',              email: 'john.omotoye@yahoo.com',  password: 'Manager@123',  icon: 'badge',                badge: 'Manager'   },
+    { label: 'Admin',                email: 'johnomotoye@gmail.com',   password: 'Admin@1234',   icon: 'admin_panel_settings', badge: 'Admin'     },
   ];
 
   form = this.fb.group({

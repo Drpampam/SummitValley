@@ -1,14 +1,16 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, effect, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, of, throwError, delay, tap } from 'rxjs';
-import { User, LoginCredentials, RegisterData, AppLocale } from '../models/user.model';
+import { User, LoginCredentials, RegisterData, AppLocale, UserRole } from '../models/user.model';
 import { MOCK_CREDENTIALS, MOCK_USERS, getUserByEmail } from '../data/mock-data';
 import { EmailService } from './email.service';
 
-const STORAGE_KEY     = 'nb_user';
-const LOCKOUT_KEY     = 'nb_lockout';
-const MAX_ATTEMPTS    = 5;
-const LOCKOUT_MS      = 5 * 60 * 1000; // 5 minutes
+const STORAGE_KEY          = 'nb_user';
+const LOCKOUT_KEY          = 'nb_lockout';
+const DYNAMIC_USERS_KEY    = 'dynamic_users';
+const DYNAMIC_CREDS_KEY    = 'dynamic_credentials';
+const MAX_ATTEMPTS         = 5;
+const LOCKOUT_MS           = 5 * 60 * 1000; // 5 minutes
 
 interface LockoutRecord { attempts: number; lockedUntil: number | null; }
 
@@ -17,6 +19,12 @@ export class AuthService {
   private emailSvc = inject(EmailService);
   private _user = signal<User | null>(null);
 
+  private _dynamicUsers: WritableSignal<User[]>;
+  private _dynamicCreds: WritableSignal<Record<string, string>>;
+
+  /** All users — MOCK seed + admin-created dynamic users. */
+  readonly allUsersReactive = computed<User[]>(() => [...MOCK_USERS, ...this._dynamicUsers()]);
+
   readonly user            = this._user.asReadonly();
   readonly isAuthenticated = computed(() => this._user() !== null);
   readonly isAdmin         = computed(() => this._user()?.role === 'admin');
@@ -24,6 +32,12 @@ export class AuthService {
   readonly isUser          = computed(() => this._user()?.role === 'user');
 
   constructor(private router: Router) {
+    // Load dynamic users and credentials from localStorage
+    this._dynamicUsers = signal<User[]>(this._loadJson(DYNAMIC_USERS_KEY, []));
+    this._dynamicCreds = signal<Record<string, string>>(this._loadJson(DYNAMIC_CREDS_KEY, {}));
+    effect(() => { localStorage.setItem(DYNAMIC_USERS_KEY, JSON.stringify(this._dynamicUsers())); });
+    effect(() => { localStorage.setItem(DYNAMIC_CREDS_KEY, JSON.stringify(this._dynamicCreds())); });
+
     // Migrate legacy key if present
     const legacy = localStorage.getItem('svb_user') ?? sessionStorage.getItem('svb_user');
     if (legacy) {
@@ -39,6 +53,11 @@ export class AuthService {
         sessionStorage.removeItem(STORAGE_KEY);
       }
     }
+  }
+
+  private _loadJson<T>(key: string, fallback: T): T {
+    try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; }
+    catch { return fallback; }
   }
 
   // ── Rate limiting ────────────────────────────────────────────────────────────
@@ -74,8 +93,8 @@ export class AuthService {
       return throwError(() => new Error(`Account locked. Try again in ${secs}s.`)).pipe(delay(300));
     }
 
-    const found    = getUserByEmail(email);
-    const expected = MOCK_CREDENTIALS[email];
+    const found    = getUserByEmail(email) ?? this._dynamicUsers().find(u => u.email === email);
+    const expected = MOCK_CREDENTIALS[email] ?? this._dynamicCreds()[email];
 
     if (!found || !expected || credentials.password !== expected) {
       const attempts = record.attempts + 1;
@@ -143,12 +162,81 @@ export class AuthService {
 
   /** Returns the home route for the currently authenticated user based on role. */
   homeRoute(): string {
-    const role = this._user()?.role;
+    const user = this._user();
+    if (user?.mustChangePassword) return '/change-password';
+    const role = user?.role;
     if (role === 'admin') return '/admin';
     if (role === 'account_manager') return '/manager';
     return '/dashboard';
   }
 
-  /** All users (admin-only view). */
-  get allUsers(): User[] { return MOCK_USERS; }
+  /** All users — MOCK seed + dynamic (admin-only view). */
+  get allUsers(): User[] { return this.allUsersReactive(); }
+
+  // ── Admin: create a new user with a generated temp password ─────────────────
+  createUser(data: {
+    firstName: string;
+    lastName:  string;
+    email:     string;
+    role:      UserRole;
+    country:   string;
+    phone?:    string;
+  }): { user: User; tempPassword: string } {
+    const locale: AppLocale = data.country === 'GB' ? 'en-GB' : 'en-US';
+    const tempPassword = this._generateTempPassword();
+    const prefix = data.role === 'account_manager' ? 'mgr' : 'user';
+    const user: User = {
+      id:                 `${prefix}-${Date.now()}`,
+      firstName:          data.firstName,
+      lastName:           data.lastName,
+      email:              data.email.toLowerCase().trim(),
+      phone:              data.phone ?? '',
+      address: '', city: '', state: '', zip: '',
+      country:            data.country,
+      locale,
+      role:               data.role,
+      mustChangePassword: true,
+      createdAt:          new Date().toISOString(),
+    };
+    this._dynamicUsers.update(users => [...users, user]);
+    this._dynamicCreds.update(creds => ({ ...creds, [user.email]: tempPassword }));
+    return { user, tempPassword };
+  }
+
+  // ── Change password (called after first login or from profile) ───────────────
+  changePassword(email: string, newPassword: string): void {
+    const lc = email.toLowerCase().trim();
+    // Update dynamic credential if present
+    if (this._dynamicCreds()[lc] !== undefined) {
+      this._dynamicCreds.update(creds => ({ ...creds, [lc]: newPassword }));
+    }
+    // Clear mustChangePassword on the dynamic user record
+    this._dynamicUsers.update(users =>
+      users.map(u => u.email === lc ? { ...u, mustChangePassword: false } : u)
+    );
+    // Update the active session
+    const current = this._user();
+    if (current && current.email === lc) {
+      const updated = { ...current, mustChangePassword: false };
+      this._user.set(updated);
+      const store = localStorage.getItem(STORAGE_KEY) ? localStorage : sessionStorage;
+      store.setItem(STORAGE_KEY, JSON.stringify(updated));
+    }
+  }
+
+  private _generateTempPassword(): string {
+    const upper   = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+    const lower   = 'abcdefghjkmnpqrstuvwxyz';
+    const digits  = '23456789';
+    const special = '@#$!';
+    const all     = upper + lower + digits + special;
+    const parts: string[] = [
+      upper[Math.floor(Math.random() * upper.length)],
+      lower[Math.floor(Math.random() * lower.length)],
+      digits[Math.floor(Math.random() * digits.length)],
+      special[Math.floor(Math.random() * special.length)],
+      ...Array.from({ length: 6 }, () => all[Math.floor(Math.random() * all.length)]),
+    ];
+    return parts.sort(() => Math.random() - 0.5).join('');
+  }
 }

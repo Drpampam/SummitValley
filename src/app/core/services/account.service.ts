@@ -65,6 +65,11 @@ export class AccountService {
     );
   }
 
+  /** Add a new account (admin-created users). */
+  addAccount(account: Account): void {
+    this._allAccounts.update(accounts => [...accounts, account]);
+  }
+
   /** Reset accounts back to seed data (admin use). */
   resetToSeedData(): void {
     this._allAccounts.set([...MOCK_ACCOUNTS]);
