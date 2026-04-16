@@ -136,6 +136,17 @@ export class TransfersComponent implements OnInit {
     this.lastAmount.set(amount ?? 0);
     this.lastRecipient.set('');
 
+    const sourceAccount = this.accounts().find(a => a.id === fromAccount);
+    if ((amount ?? 0) > (sourceAccount?.availableBalance ?? 0)) {
+      this._runDeclined('Insufficient funds. Please check your available balance and try again.');
+      this.transactionService.submitTransfer({
+        fromAccountId: fromAccount!, toAccountId: toAccount!,
+        amount: amount!, date: (date as Date).toISOString(),
+        note: note ?? undefined, isInternal: true,
+      }).subscribe();
+      return;
+    }
+
     const check = this.policySvc.evaluateTransfer({
       fromAccountId: fromAccount!, toAccountId: toAccount!,
       amount: amount!, date: (date as Date).toISOString(), isInternal: true,
@@ -162,6 +173,18 @@ export class TransfersComponent implements OnInit {
 
     this.lastAmount.set(amount ?? 0);
     this.lastRecipient.set(recipientName ?? '');
+
+    const sourceAccount = this.accounts().find(a => a.id === fromAccount);
+    if ((amount ?? 0) > (sourceAccount?.availableBalance ?? 0)) {
+      this._runDeclined('Insufficient funds. Please check your available balance and try again.');
+      this.transactionService.submitTransfer({
+        fromAccountId: fromAccount!, recipientName: recipientName!,
+        routingNumber: routingNumber!, accountNumber: accountNumber!,
+        amount: amount!, date: (date as Date).toISOString(),
+        note: note ?? undefined, isInternal: false,
+      }).subscribe();
+      return;
+    }
 
     const check = this.policySvc.evaluateTransfer({
       fromAccountId: fromAccount!, recipientName: recipientName!,

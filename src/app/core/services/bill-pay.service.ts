@@ -2,6 +2,7 @@ import { Injectable, inject, signal, computed, effect, WritableSignal } from '@a
 import { Observable, of, delay, tap } from 'rxjs';
 import { Biller, BillPayment } from '../models/bill-pay.model';
 import { AuthService } from './auth.service';
+import { AccountService } from './account.service';
 import { StorageService } from './storage.service';
 import { EmailService } from './email.service';
 import { MOCK_BILLERS, MOCK_BILL_PAYMENTS } from '../data/mock-data';
@@ -9,6 +10,7 @@ import { MOCK_BILLERS, MOCK_BILL_PAYMENTS } from '../data/mock-data';
 @Injectable({ providedIn: 'root' })
 export class BillPayService {
   private auth     = inject(AuthService);
+  private accSvc   = inject(AccountService);
   private storage  = inject(StorageService);
   private emailSvc = inject(EmailService);
 
@@ -27,7 +29,9 @@ export class BillPayService {
   readonly payments = computed<BillPayment[]>(() => {
     const user = this.auth.user();
     if (!user) return [];
-    return this._payments();
+    if (user.role === 'admin') return this._payments();
+    const accountIds = this.accSvc.accounts().map(a => a.id);
+    return this._payments().filter(p => accountIds.includes(p.fromAccountId));
   });
 
   readonly scheduled = computed(() => this.payments().filter(p => p.status === 'scheduled'));

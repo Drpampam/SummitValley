@@ -100,12 +100,35 @@ export class TransactionService {
       return of(deniedTxn).pipe(delay(800));
     }
 
+    // ── Balance check ─────────────────────────────────────────────────────────
+    const fromAcc = this.accSvc.getAccountById(request.fromAccountId);
+    const availableBalance = fromAcc?.availableBalance ?? 0;
+
+    if (request.amount > availableBalance) {
+      const insufficientTxn: Transaction = {
+        id:          `txn-${Date.now()}`,
+        accountId:   request.fromAccountId,
+        date:        new Date().toISOString(),
+        description: request.isInternal
+          ? 'Internal Transfer'
+          : `Transfer to ${request.recipientName}`,
+        category:    'transfer',
+        type:        'debit',
+        amount:      request.amount,
+        balance:     availableBalance,
+        status:      'failed',
+        reference:   `INSUF-${Date.now()}`,
+        denialMessage: 'Insufficient funds.',
+      };
+      this._all.update(txns => [insufficientTxn, ...txns]);
+      return of(insufficientTxn).pipe(delay(800));
+    }
+
     // ── Normal flow ───────────────────────────────────────────────────────────
     const ref = `TRF-${Date.now()}`;
     const now = new Date().toISOString();
 
     // Snapshot current balances before the transfer
-    const fromAcc        = this.accSvc.getAccountById(request.fromAccountId);
     const fromBalBefore  = fromAcc?.balance ?? 0;
     const newFromBalance = fromBalBefore - request.amount;
 
