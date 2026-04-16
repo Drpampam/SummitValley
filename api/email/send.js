@@ -2,11 +2,19 @@ const { Resend } = require('resend');
 
 const FROM = `${process.env.FROM_NAME || 'Summit Valley Bank'} <${process.env.FROM_EMAIL || 'onboarding@resend.dev'}>`;
 
+// In production the Angular app calls /api/email/send on the same Vercel domain
+// (same-origin — no CORS headers needed). The headers below only matter for
+// local development via `vercel dev` or direct curl testing.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:4200,http://localhost:3000').split(',');
+
 module.exports = async (req, res) => {
-  // CORS headers (for local testing via vercel dev)
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Vary', 'Origin');
+  }
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
