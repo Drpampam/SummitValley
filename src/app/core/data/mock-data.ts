@@ -23,14 +23,14 @@ export const MOCK_USERS: User[] = [
   // ── Regular Customers ──────────────────────────────────────────────────────
   {
     id: 'user-001',
-    firstName: 'John',
-    lastName: 'Ziland',
+    firstName: 'Marcus',
+    lastName: 'Reynolds',
     email: 'svb-ziland-us@mailinator.com',
-    phone: '+1 555 234 5678',
-    address: '123 Main Street',
+    phone: '+1 212 548 3901',
+    address: '47 Lexington Avenue',
     city: 'New York',
     state: 'NY',
-    zip: '10001',
+    zip: '10017',
     country: 'US',
     locale: 'en-US',
     role: 'user',
@@ -38,14 +38,14 @@ export const MOCK_USERS: User[] = [
   },
   {
     id: 'user-002',
-    firstName: 'John',
-    lastName: 'Ziland',
+    firstName: 'Sophie',
+    lastName: 'Hartley',
     email: 'svb-ziland-uk@mailinator.com',
-    phone: '+44 20 7946 0321',
-    address: '14 Baker Street',
+    phone: '+44 20 3892 4715',
+    address: '32 Kensington High Street',
     city: 'London',
     state: 'Greater London',
-    zip: 'W1U 3BW',
+    zip: 'W8 4PT',
     country: 'GB',
     locale: 'en-GB',
     role: 'user',
@@ -53,14 +53,14 @@ export const MOCK_USERS: User[] = [
   },
   {
     id: 'user-003',
-    firstName: 'John',
-    lastName: 'Omotoye',
+    firstName: 'Elena',
+    lastName: 'Vasquez',
     email: 'svb-omotoye-user@mailinator.com',
-    phone: '+1 415 678 9012',
-    address: '456 Market Street',
+    phone: '+1 415 302 8847',
+    address: '819 Castro Street',
     city: 'San Francisco',
     state: 'CA',
-    zip: '94105',
+    zip: '94114',
     country: 'US',
     locale: 'en-US',
     role: 'user',
@@ -70,11 +70,11 @@ export const MOCK_USERS: User[] = [
   // ── Account Manager ────────────────────────────────────────────────────────
   {
     id: 'mgr-001',
-    firstName: 'John',
-    lastName: 'Omotoye',
+    firstName: 'Daniel',
+    lastName: 'Okafor',
     email: 'svb-omotoye-manager@mailinator.com',
-    phone: '+1 212 555 0178',
-    address: '789 Fifth Avenue',
+    phone: '+1 212 749 6032',
+    address: '520 Park Avenue',
     city: 'New York',
     state: 'NY',
     zip: '10022',
@@ -88,14 +88,14 @@ export const MOCK_USERS: User[] = [
   // ── Super Admin ────────────────────────────────────────────────────────────
   {
     id: 'admin-001',
-    firstName: 'John',
-    lastName: 'Omotoye',
+    firstName: 'Rachel',
+    lastName: 'Kim',
     email: 'svb-omotoye-admin@mailinator.com',
-    phone: '+1 800 639 2265',
-    address: '1 Finance Plaza',
+    phone: '+1 800 427 5193',
+    address: '1 World Financial Center',
     city: 'New York',
     state: 'NY',
-    zip: '10004',
+    zip: '10281',
     country: 'US',
     locale: 'en-US',
     role: 'admin',
@@ -133,7 +133,7 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
   { id: 'txn-010', accountId: 'acc-002', date: '2026-03-01T09:00:00Z', description: 'Interest Earned',            category: 'deposit',     type: 'credit', amount: 41.25,   balance: 24250.00, status: 'completed' },
 
   // ── James Wilson (acc-003 current, acc-004 savings) — GBP ───────────────────
-  { id: 'txn-011', accountId: 'acc-003', date: '2026-04-05T09:00:00Z', description: 'BACS Salary – Barclays HQ', category: 'salary',      type: 'credit', amount: 2800.00, balance: 12845.00, status: 'completed', reference: 'PAY-20260405' },
+  { id: 'txn-011', accountId: 'acc-003', date: '2026-04-05T09:00:00Z', description: 'BACS Salary – Hartley & Co', category: 'salary',      type: 'credit', amount: 2800.00, balance: 12845.00, status: 'completed', reference: 'PAY-20260405' },
   { id: 'txn-012', accountId: 'acc-003', date: '2026-04-04T11:30:00Z', description: 'Tesco Supermarket',          category: 'groceries',   type: 'debit',  amount: 67.50,   balance: 10045.00, status: 'completed' },
   { id: 'txn-013', accountId: 'acc-003', date: '2026-04-03T08:00:00Z', description: 'BT Broadband',               category: 'utilities',   type: 'debit',  amount: 35.00,   balance: 10112.50, status: 'completed' },
   { id: 'txn-014', accountId: 'acc-003', date: '2026-04-02T13:00:00Z', description: 'Transfer to Savings',        category: 'transfer',    type: 'debit',  amount: 500.00,  balance: 10147.50, status: 'completed', reference: 'TRF-20260402' },
@@ -195,9 +195,9 @@ export const MOCK_BILL_PAYMENTS: BillPayment[] = [
 
 // ── Cards ──────────────────────────────────────────────────────────────────────
 export const MOCK_CARDS: DebitCard[] = [
-  { id: 'card-001', userId: 'user-001', accountId: 'acc-001', last4: '4521', network: 'Visa',       expiryMonth: 9,  expiryYear: 2028, cardholderName: 'JOHN ZILAND',  status: 'active', dailyLimit: 2500, atmLimit: 1000, onlineTransactionsEnabled: true,  internationalTransactionsEnabled: false, contactlessEnabled: true,  issuedAt: '2023-01-15T00:00:00Z' },
-  { id: 'card-002', userId: 'user-002', accountId: 'acc-003', last4: '2847', network: 'Mastercard', expiryMonth: 6,  expiryYear: 2027, cardholderName: 'JOHN ZILAND',  status: 'active', dailyLimit: 2000, atmLimit: 500,  onlineTransactionsEnabled: true,  internationalTransactionsEnabled: true,  contactlessEnabled: true,  issuedAt: '2023-03-20T00:00:00Z' },
-  { id: 'card-003', userId: 'user-003', accountId: 'acc-005', last4: '9034', network: 'Visa',       expiryMonth: 12, expiryYear: 2026, cardholderName: 'JOHN OMOTOYE', status: 'active', dailyLimit: 1500, atmLimit: 500,  onlineTransactionsEnabled: true,  internationalTransactionsEnabled: false, contactlessEnabled: false, issuedAt: '2023-06-10T00:00:00Z' },
+  { id: 'card-001', userId: 'user-001', accountId: 'acc-001', last4: '4521', network: 'Visa',       expiryMonth: 9,  expiryYear: 2028, cardholderName: 'MARCUS REYNOLDS', status: 'active', dailyLimit: 2500, atmLimit: 1000, onlineTransactionsEnabled: true,  internationalTransactionsEnabled: false, contactlessEnabled: true,  issuedAt: '2023-01-15T00:00:00Z' },
+  { id: 'card-002', userId: 'user-002', accountId: 'acc-003', last4: '2847', network: 'Mastercard', expiryMonth: 6,  expiryYear: 2027, cardholderName: 'SOPHIE HARTLEY',  status: 'active', dailyLimit: 2000, atmLimit: 500,  onlineTransactionsEnabled: true,  internationalTransactionsEnabled: true,  contactlessEnabled: true,  issuedAt: '2023-03-20T00:00:00Z' },
+  { id: 'card-003', userId: 'user-003', accountId: 'acc-005', last4: '9034', network: 'Visa',       expiryMonth: 12, expiryYear: 2026, cardholderName: 'ELENA VASQUEZ',   status: 'active', dailyLimit: 1500, atmLimit: 500,  onlineTransactionsEnabled: true,  internationalTransactionsEnabled: false, contactlessEnabled: false, issuedAt: '2023-06-10T00:00:00Z' },
 ];
 
 // ── Statements ─────────────────────────────────────────────────────────────────
@@ -214,18 +214,18 @@ export const MOCK_STATEMENTS: Statement[] = [
 
 // ── Savings Goals ──────────────────────────────────────────────────────────────
 export const MOCK_GOALS: SavingsGoal[] = [
-  { id: 'goal-001', userId: 'user-001', name: 'Emergency Fund',    targetAmount: 15000, currentAmount: 8432,  linkedAccountId: 'acc-002', targetDate: '2026-12-31', status: 'active',    icon: 'shield',         color: '#15803d', createdAt: '2025-01-01T00:00:00Z', autoContribute: true,  monthlyContribution: 500 },
-  { id: 'goal-002', userId: 'user-001', name: 'Vacation to Japan', targetAmount: 5000,  currentAmount: 2250,  linkedAccountId: 'acc-002', targetDate: '2026-09-01', status: 'active',    icon: 'flight_takeoff', color: '#0891b2', createdAt: '2025-06-15T00:00:00Z', autoContribute: true,  monthlyContribution: 250 },
-  { id: 'goal-003', userId: 'user-001', name: 'New Laptop',        targetAmount: 2000,  currentAmount: 2000,  linkedAccountId: 'acc-002', targetDate: '2026-03-01', status: 'completed', icon: 'laptop',         color: '#8b5cf6', createdAt: '2025-09-01T00:00:00Z', autoContribute: false                           },
-  { id: 'goal-004', userId: 'user-002', name: 'House Deposit',     targetAmount: 50000, currentAmount: 12000, linkedAccountId: 'acc-004', targetDate: '2028-06-01', status: 'active',    icon: 'home',           color: '#CC0000', createdAt: '2024-01-01T00:00:00Z', autoContribute: true,  monthlyContribution: 1000 },
+  { id: 'goal-001', userId: 'user-001', name: 'Emergency Fund',       targetAmount: 15000, currentAmount: 8432,  linkedAccountId: 'acc-002', targetDate: '2026-12-31', status: 'active',    icon: 'shield',         color: '#15803d', createdAt: '2025-01-01T00:00:00Z', autoContribute: true,  monthlyContribution: 500 },
+  { id: 'goal-002', userId: 'user-001', name: 'Vacation to Hawaii',  targetAmount: 5000,  currentAmount: 2250,  linkedAccountId: 'acc-002', targetDate: '2026-09-01', status: 'active',    icon: 'flight_takeoff', color: '#0891b2', createdAt: '2025-06-15T00:00:00Z', autoContribute: true,  monthlyContribution: 250 },
+  { id: 'goal-003', userId: 'user-001', name: 'New Laptop',          targetAmount: 2000,  currentAmount: 2000,  linkedAccountId: 'acc-002', targetDate: '2026-03-01', status: 'completed', icon: 'laptop',         color: '#8b5cf6', createdAt: '2025-09-01T00:00:00Z', autoContribute: false                           },
+  { id: 'goal-004', userId: 'user-002', name: 'House Deposit',       targetAmount: 50000, currentAmount: 12000, linkedAccountId: 'acc-004', targetDate: '2028-06-01', status: 'active',    icon: 'home',           color: '#CC0000', createdAt: '2024-01-01T00:00:00Z', autoContribute: true,  monthlyContribution: 1000 },
 ];
 
 // ── Beneficiaries ──────────────────────────────────────────────────────────────
 export const MOCK_BENEFICIARIES: Beneficiary[] = [
-  { id: 'ben-001', userId: 'user-001', nickname: 'My Savings',      type: 'internal', toAccountId: 'acc-002',                                                                      createdAt: '2023-02-01T00:00:00Z', lastUsed: '2026-04-02T12:00:00Z' },
-  { id: 'ben-002', userId: 'user-001', nickname: 'Mom',             type: 'external', recipientName: 'Linda Morgan',    routingNumber: '021000021', accountNumber: '****5678', bankName: 'Chase Bank',  createdAt: '2023-05-10T00:00:00Z', lastUsed: '2026-03-15T00:00:00Z' },
-  { id: 'ben-003', userId: 'user-001', nickname: 'Rent – Park Ave', type: 'external', recipientName: 'Park Ave Realty', routingNumber: '026009593', accountNumber: '****3311', bankName: 'Citibank',    createdAt: '2023-01-20T00:00:00Z', lastUsed: '2026-04-01T09:00:00Z' },
-  { id: 'ben-004', userId: 'user-002', nickname: 'My Savings',      type: 'internal', toAccountId: 'acc-004',                                                                      createdAt: '2023-04-01T00:00:00Z', lastUsed: '2026-03-28T10:00:00Z' },
+  { id: 'ben-001', userId: 'user-001', nickname: 'My Savings',        type: 'internal', toAccountId: 'acc-002',                                                                          createdAt: '2023-02-01T00:00:00Z', lastUsed: '2026-04-02T12:00:00Z' },
+  { id: 'ben-002', userId: 'user-001', nickname: 'Mom',               type: 'external', recipientName: 'Patricia Reynolds', routingNumber: '021000021', accountNumber: '****5678', bankName: 'Chase Bank',    createdAt: '2023-05-10T00:00:00Z', lastUsed: '2026-03-15T00:00:00Z' },
+  { id: 'ben-003', userId: 'user-001', nickname: 'Rent – Lexington',  type: 'external', recipientName: 'Lexington Properties LLC', routingNumber: '026009593', accountNumber: '****3311', bankName: 'Citibank', createdAt: '2023-01-20T00:00:00Z', lastUsed: '2026-04-01T09:00:00Z' },
+  { id: 'ben-004', userId: 'user-002', nickname: 'My Savings',        type: 'internal', toAccountId: 'acc-004',                                                                          createdAt: '2023-04-01T00:00:00Z', lastUsed: '2026-03-28T10:00:00Z' },
 ];
 
 // ── Disputes ───────────────────────────────────────────────────────────────────
