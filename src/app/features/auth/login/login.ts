@@ -44,11 +44,11 @@ export class LoginComponent {
   }
 
   readonly demoAccounts: DemoAccount[] = [
-    { label: 'John Ziland (Gmail)',  email: 'johnziland@gmail.com',    password: 'Ziland@1234',  icon: 'person',               badge: 'Customer'  },
-    { label: 'John Ziland (Yahoo)',  email: 'johnziland@yahoo.com',    password: 'Ziland@4321',  icon: 'person',               badge: 'Customer'  },
-    { label: 'John Omotoye',         email: 'omotoyejohn2@gmail.com',  password: 'Omotoye@123',  icon: 'person',               badge: 'Customer'  },
-    { label: 'Manager',              email: 'john.omotoye@yahoo.com',  password: 'Manager@123',  icon: 'badge',                badge: 'Manager'   },
-    { label: 'Admin',                email: 'johnomotoye@gmail.com',   password: 'Admin@1234',   icon: 'admin_panel_settings', badge: 'Admin'     },
+    { label: 'Marcus Reynolds',  email: 'svb-marcus-reynolds@mailinator.com',  password: 'Marcus@1234',  icon: 'person',               badge: 'Customer'  },
+    { label: 'Sophie Hartley',   email: 'svb-sophie-hartley@mailinator.com',   password: 'Sophie@4321',  icon: 'person',               badge: 'Customer'  },
+    { label: 'Elena Vasquez',    email: 'svb-elena-vasquez@mailinator.com',     password: 'Elena@1234',   icon: 'person',               badge: 'Customer'  },
+    { label: 'Daniel Okafor',    email: 'svb-daniel-okafor@mailinator.com',     password: 'Daniel@123',   icon: 'badge',                badge: 'Manager'   },
+    { label: 'Rachel Kim',       email: 'svb-rachel-kim@mailinator.com',        password: 'Rachel@1234',  icon: 'admin_panel_settings', badge: 'Admin'     },
   ];
 
   form = this.fb.group({
