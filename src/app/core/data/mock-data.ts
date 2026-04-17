@@ -11,11 +11,11 @@ import { AccountAlert } from '../models/alert.model';
 
 // ── Credentials (email → password) ────────────────────────────────────────────
 export const MOCK_CREDENTIALS: Record<string, string> = {
-  'svb-ziland-us@mailinator.com':      'Ziland@1234',
-  'svb-ziland-uk@mailinator.com':      'Ziland@4321',
-  'svb-omotoye-user@mailinator.com':   'Omotoye@123',
-  'svb-omotoye-manager@mailinator.com':'Manager@123',
-  'svb-omotoye-admin@mailinator.com':  'Admin@1234',
+  'svb-marcus-reynolds@mailinator.com': 'Marcus@1234',
+  'svb-sophie-hartley@mailinator.com':  'Sophie@4321',
+  'svb-elena-vasquez@mailinator.com':   'Elena@1234',
+  'svb-daniel-okafor@mailinator.com':   'Daniel@123',
+  'svb-rachel-kim@mailinator.com':      'Rachel@1234',
 };
 
 // ── Users ──────────────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ export const MOCK_USERS: User[] = [
     id: 'user-001',
     firstName: 'Marcus',
     lastName: 'Reynolds',
-    email: 'svb-ziland-us@mailinator.com',
+    email: 'svb-marcus-reynolds@mailinator.com',
     phone: '+1 212 548 3901',
     address: '47 Lexington Avenue',
     city: 'New York',
@@ -40,7 +40,7 @@ export const MOCK_USERS: User[] = [
     id: 'user-002',
     firstName: 'Sophie',
     lastName: 'Hartley',
-    email: 'svb-ziland-uk@mailinator.com',
+    email: 'svb-sophie-hartley@mailinator.com',
     phone: '+44 20 3892 4715',
     address: '32 Kensington High Street',
     city: 'London',
@@ -55,7 +55,7 @@ export const MOCK_USERS: User[] = [
     id: 'user-003',
     firstName: 'Elena',
     lastName: 'Vasquez',
-    email: 'svb-omotoye-user@mailinator.com',
+    email: 'svb-elena-vasquez@mailinator.com',
     phone: '+1 415 302 8847',
     address: '819 Castro Street',
     city: 'San Francisco',
@@ -72,7 +72,7 @@ export const MOCK_USERS: User[] = [
     id: 'mgr-001',
     firstName: 'Daniel',
     lastName: 'Okafor',
-    email: 'svb-omotoye-manager@mailinator.com',
+    email: 'svb-daniel-okafor@mailinator.com',
     phone: '+1 212 749 6032',
     address: '520 Park Avenue',
     city: 'New York',
@@ -90,7 +90,7 @@ export const MOCK_USERS: User[] = [
     id: 'admin-001',
     firstName: 'Rachel',
     lastName: 'Kim',
-    email: 'svb-omotoye-admin@mailinator.com',
+    email: 'svb-rachel-kim@mailinator.com',
     phone: '+1 800 427 5193',
     address: '1 World Financial Center',
     city: 'New York',
