@@ -380,13 +380,8 @@ export class AdminComponent {
   }
 
   private _saveDefaultRejectionMessage(txn: AdminTxnRow, message: string): void {
-    // Resolve userId from the transaction's account
-    const userId = (() => {
-      const allAccs = this.accSvc.accounts();
-      return allAccs.find(a => a.id === txn.accountId)?.userId ?? '';
-    })();
-    if (!userId) return;
-    const updated = { ...this._rejectionMessages(), [userId]: message };
+    if (!txn.userId) return;
+    const updated = { ...this._rejectionMessages(), [txn.userId]: message };
     this._rejectionMessages.set(updated);
     localStorage.setItem('svb_rejection_messages', JSON.stringify(updated));
   }

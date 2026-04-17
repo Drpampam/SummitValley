@@ -422,12 +422,13 @@
                     Add Funds
                   </button>
                   <button
-                    mat-icon-button
+                    mat-stroked-button
                     class="edit-user-btn"
                     (click)="openEditUser(user)"
                     matTooltip="Edit profile"
                   >
                     <mat-icon>edit</mat-icon>
+                    Edit
                   </button>
                 </div>
               </td>
@@ -951,8 +952,9 @@
                   <p class="mgr-email">{{ mgr.email }}</p>
                   <span class="mgr-badge">Account Manager</span>
                 </div>
-                <button mat-icon-button class="edit-user-btn" (click)="openEditUser(mgr)" matTooltip="Edit profile">
+                <button mat-stroked-button class="edit-user-btn mgr-edit-btn" (click)="openEditUser(mgr)" matTooltip="Edit profile">
                   <mat-icon>edit</mat-icon>
+                  Edit
                 </button>
               </div>
 
@@ -994,8 +996,9 @@
                 <p class="admin-list-meta">{{ adm.email }} · {{ adm.country === 'GB' ? '🇬🇧 UK' : '🇺🇸 US' }}</p>
               </div>
               <span class="admin-role-badge">Admin</span>
-              <button mat-icon-button class="edit-user-btn" (click)="openEditUser(adm)" matTooltip="Edit profile">
+              <button mat-stroked-button class="edit-user-btn" (click)="openEditUser(adm)" matTooltip="Edit profile">
                 <mat-icon>edit</mat-icon>
+                Edit
               </button>
             </div>
           }

@@ -6,9 +6,11 @@ import { AccountService } from './account.service';
 import { PolicyService } from './policy.service';
 import { StorageService } from './storage.service';
 import { EmailService } from './email.service';
-import { MOCK_TRANSACTIONS, MOCK_USERS, MOCK_ACCOUNTS } from '../data/mock-data';
+import { MOCK_TRANSACTIONS, MOCK_ACCOUNTS } from '../data/mock-data';
 
-const STORAGE_KEY = 'transactions';
+const STORAGE_KEY         = 'transactions';
+// Stored WITHOUT svb_ prefix so it survives storage.clearAll() on DB reset
+const DEPOSIT_STORAGE_KEY = 'admin_deposit_txns';
 
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
@@ -18,26 +20,41 @@ export class TransactionService {
   private storage    = inject(StorageService);
   private emailSvc   = inject(EmailService);
 
-  private _all: WritableSignal<Transaction[]>;
+  private _all:         WritableSignal<Transaction[]>;
+  /** Admin/manager deposit transactions — never wiped by DB reset. */
+  private _depositTxns: WritableSignal<Transaction[]>;
 
   constructor() {
     // Load from localStorage — fall back to seed data on first run
     const stored = this.storage.get<Transaction[]>(STORAGE_KEY);
     this._all = signal<Transaction[]>(stored ?? MOCK_TRANSACTIONS);
 
-    // Persist every change automatically
-    effect(() => {
-      this.storage.set(STORAGE_KEY, this._all());
-    });
+    // Load persistent admin deposit transactions (survive DB reset)
+    const storedDeposits = this._loadJson<Transaction[]>(DEPOSIT_STORAGE_KEY, []);
+    this._depositTxns = signal<Transaction[]>(storedDeposits);
+
+    effect(() => { this.storage.set(STORAGE_KEY, this._all()); });
+    effect(() => { localStorage.setItem(DEPOSIT_STORAGE_KEY, JSON.stringify(this._depositTxns())); });
+  }
+
+  private _loadJson<T>(key: string, fallback: T): T {
+    try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; }
+    catch { return fallback; }
+  }
+
+  /** All transactions merged (regular + persistent admin deposits). */
+  private get _merged(): Transaction[] {
+    return [...this._all(), ...this._depositTxns()];
   }
 
   /** Transactions visible to the current user based on their role. */
   readonly transactions = computed<Transaction[]>(() => {
     const user = this.auth.user();
     if (!user) return [];
-    if (user.role === 'admin') return this._all();
+    const all = [...this._all(), ...this._depositTxns()];
+    if (user.role === 'admin') return all;
     const visibleIds = this.accSvc.accounts().map(a => a.id);
-    return this._all().filter(t => visibleIds.includes(t.accountId));
+    return all.filter(t => visibleIds.includes(t.accountId));
   });
 
   getTransactions(accountId?: string): Observable<Transaction[]> {
@@ -55,7 +72,8 @@ export class TransactionService {
 
   /** All transactions for a specific accountId (admin/manager raw access). */
   getTransactionsByAccountId(accountId: string): Transaction[] {
-    return this._all().filter(t => t.accountId === accountId)
+    return this._merged
+      .filter(t => t.accountId === accountId)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
 
@@ -216,9 +234,8 @@ export class TransactionService {
       txns.map(t => t.id === txnId ? { ...t, status: 'completed' } : t)
     );
 
-    // Email: transfer confirmed
-    const allUsers = this.auth.allUsersReactive();
-    const owner = allUsers.find(u => u.id === acc.userId);
+    // Email: transfer confirmed (use reactive list — respects admin profile edits)
+    const owner = this.auth.allUsersReactive().find(u => u.id === acc.userId);
     if (owner?.role === 'user') {
       const currency     = acc.currency;
       const fmtAmt       = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(txn.amount);
@@ -260,19 +277,22 @@ export class TransactionService {
 
   /**
    * Admin / account-manager only: credit a deposit directly into a customer account.
-   * Creates a completed 'deposit' credit transaction and updates the account balance.
+   * Transaction is stored in a persistent separate store that survives DB reset.
    */
   depositToAccount(accountId: string, amount: number, note?: string): void {
     const acc = this.accSvc.getAccountById(accountId);
     if (!acc) return;
-    const newBalance = acc.balance + amount;
-    const now = new Date().toISOString();
 
+    // recordAdminDeposit updates the live balance AND persists the amount for reset survival
+    this.accSvc.recordAdminDeposit(accountId, amount);
+
+    const newBalance = acc.balance + amount;
+    const now        = new Date().toISOString();
     const txn: Transaction = {
       id:          `txn-dep-${Date.now()}`,
       accountId,
       date:        now,
-      description: note?.trim() || 'Manual Deposit',
+      description: note?.trim() || 'Account Deposit',
       category:    'deposit',
       type:        'credit',
       amount,
@@ -281,30 +301,30 @@ export class TransactionService {
       reference:   `DEP-${Date.now()}`,
     };
 
-    this._all.update(txns => [txn, ...txns]);
-    this.accSvc.updateBalance(accountId, newBalance);
+    // Store in the persistent deposit bucket (not cleared on DB reset)
+    this._depositTxns.update(txns => [txn, ...txns]);
 
-    // Email: notify the account owner of the deposit
-    const owner = MOCK_USERS.find(u => u.id === acc.userId);
+    // Email: notify the account owner — use reactive user list (respects profile edits)
+    const owner = this.auth.allUsersReactive().find(u => u.id === acc.userId);
     if (owner?.role === 'user') {
-      const currency   = acc.currency;
-      const fmtAmt     = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(amount);
-      const accLabel   = `${acc.type === 'checking' ? 'Checking' : 'Savings'} ···· ${acc.accountNumber.slice(-4)}`;
-      const depositor  = this.auth.user();
-      const depositedBy = depositor ? `${depositor.firstName} ${depositor.lastName} (${depositor.role === 'admin' ? 'Admin' : 'Account Manager'})` : 'Summit Valley Bank';
+      const currency    = acc.currency;
+      const fmtAmt      = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(amount);
+      const accLabel    = `${acc.type === 'checking' ? 'Checking' : 'Savings'} ···· ${acc.accountNumber.slice(-4)}`;
+      const depositor   = this.auth.user();
+      const depositedBy = depositor
+        ? `${depositor.firstName} ${depositor.lastName} (${depositor.role === 'admin' ? 'Admin' : 'Account Manager'})`
+        : 'Summit Valley Bank';
       this.emailSvc.sendDepositNotification(owner.email, owner.firstName, {
-        amount:      fmtAmt,
-        account:     accLabel,
-        note:        note?.trim(),
-        depositedBy,
+        amount: fmtAmt, account: accLabel, note: note?.trim(), depositedBy,
       });
     }
   }
 
-  /** Reset transactions back to seed data (admin use). */
+  /** Reset transactions back to seed data — admin deposits are preserved. */
   resetToSeedData(): void {
     this._all.set([...MOCK_TRANSACTIONS]);
+    // _depositTxns intentionally NOT reset — deposits survive
   }
 
-  get allTransactions(): Transaction[] { return this._all(); }
+  get allTransactions(): Transaction[] { return this._merged; }
 }

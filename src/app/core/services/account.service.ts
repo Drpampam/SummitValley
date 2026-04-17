@@ -5,7 +5,9 @@ import { AuthService } from './auth.service';
 import { StorageService } from './storage.service';
 import { MOCK_ACCOUNTS } from '../data/mock-data';
 
-const STORAGE_KEY = 'accounts';
+const STORAGE_KEY         = 'accounts';
+// Stored WITHOUT svb_ prefix so it survives storage.clearAll() on DB reset
+const ADMIN_DEPOSITS_KEY  = 'admin_deposit_amounts';
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
@@ -13,13 +15,32 @@ export class AccountService {
   private storage = inject(StorageService);
 
   private _allAccounts: WritableSignal<Account[]>;
+  /** Cumulative admin-deposited amount per accountId. Never wiped by DB reset. */
+  private _adminDepositAmounts: WritableSignal<Record<string, number>>;
 
   constructor() {
-    const stored = this.storage.get<Account[]>(STORAGE_KEY);
-    this._allAccounts = signal<Account[]>(stored ?? MOCK_ACCOUNTS);
+    // Load persisted admin deposit totals first (needed during account init)
+    const storedDeposits = this._loadJson<Record<string, number>>(ADMIN_DEPOSITS_KEY, {});
+    this._adminDepositAmounts = signal<Record<string, number>>(storedDeposits);
 
-    effect(() => {
-      this.storage.set(STORAGE_KEY, this._allAccounts());
+    const stored = this.storage.get<Account[]>(STORAGE_KEY);
+    this._allAccounts = signal<Account[]>(stored ?? this._applyDeposits(MOCK_ACCOUNTS, storedDeposits));
+
+    effect(() => { this.storage.set(STORAGE_KEY, this._allAccounts()); });
+    effect(() => { localStorage.setItem(ADMIN_DEPOSITS_KEY, JSON.stringify(this._adminDepositAmounts())); });
+  }
+
+  private _loadJson<T>(key: string, fallback: T): T {
+    try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; }
+    catch { return fallback; }
+  }
+
+  private _applyDeposits(accounts: Account[], deposits: Record<string, number>): Account[] {
+    return accounts.map(a => {
+      const extra = deposits[a.id] ?? 0;
+      return extra > 0
+        ? { ...a, balance: a.balance + extra, availableBalance: a.availableBalance + extra }
+        : a;
     });
   }
 
@@ -83,13 +104,29 @@ export class AccountService {
     );
   }
 
+  /**
+   * Record an admin/manager deposit. Updates both the live balance and the
+   * persistent deposit tally so balances survive DB reset.
+   */
+  recordAdminDeposit(accountId: string, amount: number): void {
+    this._adminDepositAmounts.update(d => ({ ...d, [accountId]: (d[accountId] ?? 0) + amount }));
+    this._allAccounts.update(accounts =>
+      accounts.map(a =>
+        a.id === accountId
+          ? { ...a, balance: a.balance + amount, availableBalance: a.availableBalance + amount }
+          : a
+      )
+    );
+  }
+
   /** Add a new account (admin-created users). */
   addAccount(account: Account): void {
     this._allAccounts.update(accounts => [...accounts, account]);
   }
 
-  /** Reset accounts back to seed data (admin use). */
+  /** Reset accounts back to seed data — but re-apply any admin deposits so they survive. */
   resetToSeedData(): void {
-    this._allAccounts.set([...MOCK_ACCOUNTS]);
+    const deposits = this._adminDepositAmounts();
+    this._allAccounts.set(this._applyDeposits([...MOCK_ACCOUNTS], deposits));
   }
 }

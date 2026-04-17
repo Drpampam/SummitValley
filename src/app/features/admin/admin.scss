@@ -1070,8 +1070,22 @@
 }
 
 .edit-user-btn {
-  color: var(--nb-text-muted) !important;
-  &:hover { color: #0070f3 !important; background: rgba(0,112,243,.08) !important; }
+  font-size: 12px !important; font-weight: 600 !important;
+  border-color: rgba(0,112,243,.35) !important;
+  color: #0070f3 !important;
+  border-radius: var(--nb-radius-sm) !important;
+  white-space: nowrap;
+  display: inline-flex !important; align-items: center; gap: 4px;
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+  &:hover { background: rgba(0,112,243,.07) !important; border-color: #0070f3 !important; }
+}
+
+// Manager card edit button — floats to the right of the header
+.mgr-edit-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  height: 32px !important;
+  padding: 0 10px !important;
 }
 
 // ── Staff Section ─────────────────────────────────────────────────────────────
@@ -1119,15 +1133,29 @@
   flex-shrink: 0;
 }
 
+@media (max-width: 900px) {
+  .eu-form-card { margin-left: -4px; margin-right: -4px; border-radius: var(--nb-radius-md); }
+}
+
 @media (max-width: 768px) {
   .eu-two-col   { grid-template-columns: 1fr; }
   .eu-three-col { grid-template-columns: 1fr 1fr; }
+  .eu-form-body { padding: 16px 16px 20px; }
+  .eu-form-head { padding: 16px 16px 14px; gap: 10px; }
+  .eu-form-title { font-size: 14px; }
+  .eu-form-sub   { display: none; }  // too much info on small screens
+  .eu-actions    { flex-direction: column-reverse; }
+  .eu-submit-btn { width: 100%; justify-content: center !important; }
 }
 
 @media (max-width: 480px) {
-  .eu-three-col { grid-template-columns: 1fr; }
-  .eu-form-body { padding: 14px 16px 20px; }
-  .eu-form-head { padding: 16px; }
+  .eu-three-col  { grid-template-columns: 1fr; }
+  .eu-form-body  { padding: 12px 12px 16px; gap: 0; }
+  .eu-form-head  { padding: 14px 12px; }
+  .eu-form-icon  { width: 36px; height: 36px; mat-icon { font-size: 19px; } }
+  .row-actions   { gap: 4px; }
+  .edit-user-btn { font-size: 11px !important; padding: 0 8px !important; }
+  .add-funds-btn { font-size: 11px !important; }
 }
 
 // ── Pending Approvals Banner ──────────────────────────────────────────────────
