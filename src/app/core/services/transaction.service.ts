@@ -6,7 +6,7 @@ import { AccountService } from './account.service';
 import { PolicyService } from './policy.service';
 import { StorageService } from './storage.service';
 import { EmailService } from './email.service';
-import { MOCK_TRANSACTIONS, MOCK_ACCOUNTS } from '../data/mock-data';
+import { MOCK_TRANSACTIONS } from '../data/mock-data';
 
 const STORAGE_KEY         = 'transactions';
 // Stored WITHOUT svb_ prefix so it survives storage.clearAll() on DB reset
@@ -77,9 +77,12 @@ export class TransactionService {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
 
-  /** Admin-only: update the status of any transaction. */
+  /** Admin-only: update the status of any transaction (covers both regular and deposit buckets). */
   updateTransactionStatus(txnId: string, status: TransactionStatus): void {
     this._all.update(txns =>
+      txns.map(t => t.id === txnId ? { ...t, status } : t)
+    );
+    this._depositTxns.update(txns =>
       txns.map(t => t.id === txnId ? { ...t, status } : t)
     );
   }

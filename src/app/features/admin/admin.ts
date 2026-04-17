@@ -333,7 +333,7 @@ export class AdminComponent {
 
   private _loadRejectionMessages(): Record<string, string> {
     try {
-      return JSON.parse(localStorage.getItem('svb_rejection_messages') ?? 'null') ?? {};
+      return JSON.parse(localStorage.getItem('rejection_messages') ?? 'null') ?? {};
     } catch { return {}; }
   }
 
@@ -383,7 +383,7 @@ export class AdminComponent {
     if (!txn.userId) return;
     const updated = { ...this._rejectionMessages(), [txn.userId]: message };
     this._rejectionMessages.set(updated);
-    localStorage.setItem('svb_rejection_messages', JSON.stringify(updated));
+    localStorage.setItem('rejection_messages', JSON.stringify(updated));
   }
 
   getDefaultRejectionMessage(userId: string): string {
@@ -393,7 +393,7 @@ export class AdminComponent {
   setDefaultRejectionMessage(userId: string, message: string): void {
     const updated = { ...this._rejectionMessages(), [userId]: message };
     this._rejectionMessages.set(updated);
-    localStorage.setItem('svb_rejection_messages', JSON.stringify(updated));
+    localStorage.setItem('rejection_messages', JSON.stringify(updated));
     this.toast.success('Default rejection message saved');
   }
 

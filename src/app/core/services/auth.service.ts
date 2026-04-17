@@ -215,10 +215,9 @@ export class AuthService {
   // ── Change password (called after first login or from profile) ───────────────
   changePassword(email: string, newPassword: string): void {
     const lc = email.toLowerCase().trim();
-    // Update dynamic credential if present
-    if (this._dynamicCreds()[lc] !== undefined) {
-      this._dynamicCreds.update(creds => ({ ...creds, [lc]: newPassword }));
-    }
+    // Always store in _dynamicCreds — this overrides MOCK_CREDENTIALS for seed users
+    // and updates credentials for dynamically created users
+    this._dynamicCreds.update(creds => ({ ...creds, [lc]: newPassword }));
     // Clear mustChangePassword on the dynamic user record
     this._dynamicUsers.update(users =>
       users.map(u => u.email === lc ? { ...u, mustChangePassword: false } : u)
