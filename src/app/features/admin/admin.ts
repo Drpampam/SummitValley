@@ -23,7 +23,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { User, UserRole } from '../../core/models/user.model';
 import { Transaction, TransactionStatus, TransactionPolicy, PolicyRuleType } from '../../core/models/transaction.model';
 import { Account } from '../../core/models/account.model';
-import { MOCK_ACCOUNTS, MOCK_TRANSACTIONS, getManagerForUser, getAccountsByUserId } from '../../core/data/mock-data';
+import { MOCK_ACCOUNTS, MOCK_TRANSACTIONS, getManagerForUser } from '../../core/data/mock-data';
 
 export interface AdminTxnRow extends Transaction {
   userName: string;
@@ -203,7 +203,7 @@ export class AdminComponent {
   depositNote      = signal<string>('');
 
   openDepositPanel(userId: string): void {
-    const accounts = getAccountsByUserId(userId);
+    const accounts = this.getAccountsByUserId(userId);
     this.depositUserId.set(userId);
     this.depositAccountId.set(accounts[0]?.id ?? '');
     this.depositAmount.set('');
@@ -255,7 +255,7 @@ export class AdminComponent {
   }
 
   getUserBalance(userId: string): string {
-    const accs = getAccountsByUserId(userId);
+    const accs = this.getAccountsByUserId(userId);
     if (!accs.length) return '—';
     const currency = accs[0].currency;
     const total    = accs.reduce((s, a) => s + a.balance, 0);
