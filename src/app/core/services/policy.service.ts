@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, effect, WritableSignal, inject } from '@angular/core';
 import { TransactionPolicy, PolicyCheckResult, TransferRequest } from '../models/transaction.model';
 import { StorageService } from './storage.service';
-import { MOCK_ACCOUNTS } from '../data/mock-data';
+import { AccountService } from './account.service';
 
 const STORAGE_KEY = 'policies';
 
@@ -21,6 +21,7 @@ const DEFAULT_POLICIES: TransactionPolicy[] = [
 @Injectable({ providedIn: 'root' })
 export class PolicyService {
   private storage = inject(StorageService);
+  private accSvc  = inject(AccountService);
   private _policies: WritableSignal<TransactionPolicy[]>;
 
   constructor() {
@@ -62,8 +63,7 @@ export class PolicyService {
    */
   evaluateTransfer(request: TransferRequest): PolicyCheckResult {
     const enabled = this._policies().filter(p => p.enabled);
-    const fromAccount = MOCK_ACCOUNTS.find(a => a.id === request.fromAccountId);
-    const userId = fromAccount?.userId;
+    const userId = this.accSvc.getAccountById(request.fromAccountId)?.userId;
 
     for (const policy of enabled) {
       // Skip policies scoped to a different user

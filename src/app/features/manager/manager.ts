@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { AccountService } from '../../core/services/account.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { LocaleService } from '../../core/services/locale.service';
 import { PolicyService } from '../../core/services/policy.service';
@@ -16,7 +17,6 @@ import { ToastService } from '../../core/services/toast.service';
 import { User } from '../../core/models/user.model';
 import { Account } from '../../core/models/account.model';
 import { Transaction } from '../../core/models/transaction.model';
-import { MOCK_USERS, MOCK_ACCOUNTS, getAccountsByUserId } from '../../core/data/mock-data';
 
 interface ClientSummary {
   user: User;
@@ -40,6 +40,7 @@ interface ClientSummary {
 })
 export class ManagerComponent {
   auth       = inject(AuthService);
+  acctSvc    = inject(AccountService);
   txnSvc     = inject(TransactionService);
   locSvc     = inject(LocaleService);
   policySvc  = inject(PolicyService);
@@ -50,8 +51,8 @@ export class ManagerComponent {
     if (!manager || manager.role !== 'account_manager') return [];
 
     return (manager.managedUserIds ?? []).map(userId => {
-      const user     = MOCK_USERS.find(u => u.id === userId)!;
-      const accounts = getAccountsByUserId(userId);
+      const user     = this.auth.allUsersReactive().find(u => u.id === userId)!;
+      const accounts = this.acctSvc.getAccountsByUserId(userId);
       const currency = accounts[0]?.currency ?? 'USD';
       const allTxns  = accounts.flatMap(a => this.txnSvc.getTransactionsByAccountId(a.id));
 

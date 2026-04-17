@@ -23,7 +23,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { User, UserRole } from '../../core/models/user.model';
 import { Transaction, TransactionStatus, TransactionPolicy, PolicyRuleType } from '../../core/models/transaction.model';
 import { Account } from '../../core/models/account.model';
-import { MOCK_ACCOUNTS, MOCK_TRANSACTIONS, getManagerForUser } from '../../core/data/mock-data';
+import { MOCK_ACCOUNTS } from '../../core/data/mock-data';
 
 export interface AdminTxnRow extends Transaction {
   userName: string;
