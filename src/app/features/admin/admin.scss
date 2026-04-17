@@ -976,3 +976,156 @@
 .client-name { margin: 0; font-size: 13px; font-weight: 600; }
 .client-meta { margin: 2px 0 0; font-size: 11px; color: var(--nb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .client-balance { font-size: 13px; font-weight: 700; color: var(--nb-primary); flex-shrink: 0; }
+
+// ── Edit User Form Card ────────────────────────────────────────────────────────
+.eu-form-card {
+  background: var(--nb-card-bg);
+  border: 1px solid var(--nb-border);
+  border-radius: var(--nb-radius-lg);
+  margin-bottom: 20px;
+  overflow: hidden;
+  animation: fadeInUp .2s ease-out both;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #0070f3 0%, #7c3aed 100%);
+  }
+}
+
+.eu-form-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 20px 24px 16px;
+  background: rgba(0,112,243,.04);
+  border-bottom: 1px solid var(--nb-border);
+}
+
+.eu-form-icon {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: rgba(0,112,243,.1);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  mat-icon { font-size: 22px; color: #0070f3; }
+}
+
+.eu-form-title { margin: 0 0 3px; font-size: 16px; font-weight: 700; }
+.eu-form-sub   { margin: 0; font-size: 12px; color: var(--nb-text-muted); font-family: monospace; }
+
+.eu-form-body {
+  padding: 20px 24px 24px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.eu-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.eu-three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.eu-field { display: flex; flex-direction: column; gap: 4px; }
+
+.eu-label {
+  font-size: 12px; font-weight: 600; color: var(--nb-text-secondary);
+  display: flex; align-items: center; gap: 5px;
+  .req { color: var(--nb-danger); }
+}
+.eu-optional { font-weight: 400; color: var(--nb-text-muted); }
+
+.eu-password-section {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--nb-border);
+}
+
+.eu-pw-icon { font-size: 15px; width: 15px; height: 15px; color: var(--nb-text-muted); }
+
+.eu-actions {
+  display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;
+}
+
+.eu-submit-btn {
+  border-radius: var(--nb-radius-md) !important;
+  background: linear-gradient(135deg, #0070f3 0%, #7c3aed 100%) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  gap: 6px;
+  box-shadow: 0 4px 10px rgba(0,112,243,.25) !important;
+  mat-icon { font-size: 17px; }
+  &:hover { box-shadow: 0 6px 16px rgba(0,112,243,.35) !important; }
+}
+
+// ── Row Actions ───────────────────────────────────────────────────────────────
+.row-actions {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+
+.edit-user-btn {
+  color: var(--nb-text-muted) !important;
+  &:hover { color: #0070f3 !important; background: rgba(0,112,243,.08) !important; }
+}
+
+// ── Staff Section ─────────────────────────────────────────────────────────────
+.staff-section-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; color: var(--nb-text-secondary);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 14px;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; color: var(--nb-primary); }
+}
+
+// ── Admin List ────────────────────────────────────────────────────────────────
+.admin-list {
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.admin-list-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  background: var(--nb-card-bg);
+  border: 1px solid var(--nb-border);
+  border-radius: var(--nb-radius-md);
+  transition: box-shadow 0.15s ease;
+  &:hover { box-shadow: var(--nb-shadow-sm); }
+}
+
+.admin-list-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #660000 0%, #FFCD41 100%);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 800;
+  flex-shrink: 0;
+}
+
+.admin-list-info { flex: 1; min-width: 0; }
+.admin-list-name { margin: 0; font-size: 14px; font-weight: 700; }
+.admin-list-meta { margin: 2px 0 0; font-size: 12px; color: var(--nb-text-muted); font-family: monospace; }
+
+.admin-role-badge {
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px; border-radius: 99px;
+  background: rgba(102,0,0,.1); color: #880000;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .eu-two-col   { grid-template-columns: 1fr; }
+  .eu-three-col { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .eu-three-col { grid-template-columns: 1fr; }
+  .eu-form-body { padding: 14px 16px 20px; }
+  .eu-form-head { padding: 16px; }
+}

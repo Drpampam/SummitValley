@@ -19,11 +19,18 @@ export class AuthService {
   private emailSvc = inject(EmailService);
   private _user = signal<User | null>(null);
 
-  private _dynamicUsers: WritableSignal<User[]>;
-  private _dynamicCreds: WritableSignal<Record<string, string>>;
+  private _dynamicUsers:   WritableSignal<User[]>;
+  private _dynamicCreds:   WritableSignal<Record<string, string>>;
+  private _userOverrides:  WritableSignal<Record<string, Partial<User>>>;
 
-  /** All users — MOCK seed + admin-created dynamic users. */
-  readonly allUsersReactive = computed<User[]>(() => [...MOCK_USERS, ...this._dynamicUsers()]);
+  /** All users — MOCK seed (with overrides) + admin-created dynamic users. */
+  readonly allUsersReactive = computed<User[]>(() => {
+    const overrides = this._userOverrides();
+    const mockWithOverrides = MOCK_USERS.map(u =>
+      overrides[u.id] ? { ...u, ...overrides[u.id] } : u
+    );
+    return [...mockWithOverrides, ...this._dynamicUsers()];
+  });
 
   readonly user            = this._user.asReadonly();
   readonly isAuthenticated = computed(() => this._user() !== null);
@@ -32,11 +39,13 @@ export class AuthService {
   readonly isUser          = computed(() => this._user()?.role === 'user');
 
   constructor(private router: Router) {
-    // Load dynamic users and credentials from localStorage
-    this._dynamicUsers = signal<User[]>(this._loadJson(DYNAMIC_USERS_KEY, []));
-    this._dynamicCreds = signal<Record<string, string>>(this._loadJson(DYNAMIC_CREDS_KEY, {}));
+    // Load dynamic users, credentials, and overrides from localStorage
+    this._dynamicUsers  = signal<User[]>(this._loadJson(DYNAMIC_USERS_KEY, []));
+    this._dynamicCreds  = signal<Record<string, string>>(this._loadJson(DYNAMIC_CREDS_KEY, {}));
+    this._userOverrides = signal<Record<string, Partial<User>>>(this._loadJson('svb_user_overrides', {}));
     effect(() => { localStorage.setItem(DYNAMIC_USERS_KEY, JSON.stringify(this._dynamicUsers())); });
     effect(() => { localStorage.setItem(DYNAMIC_CREDS_KEY, JSON.stringify(this._dynamicCreds())); });
+    effect(() => { localStorage.setItem('svb_user_overrides', JSON.stringify(this._userOverrides())); });
 
     // Migrate legacy key if present
     const legacy = localStorage.getItem('svb_user') ?? sessionStorage.getItem('svb_user');
@@ -93,8 +102,8 @@ export class AuthService {
       return throwError(() => new Error(`Account locked. Try again in ${secs}s.`)).pipe(delay(300));
     }
 
-    const found    = getUserByEmail(email) ?? this._dynamicUsers().find(u => u.email === email);
-    const expected = MOCK_CREDENTIALS[email] ?? this._dynamicCreds()[email];
+    const found    = this.allUsersReactive().find(u => u.email === email);
+    const expected = this._dynamicCreds()[email] ?? MOCK_CREDENTIALS[email];
 
     if (!found || !expected || credentials.password !== expected) {
       const attempts = record.attempts + 1;
@@ -222,6 +231,53 @@ export class AuthService {
       const store = localStorage.getItem(STORAGE_KEY) ? localStorage : sessionStorage;
       store.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
+  }
+
+  // ── Admin: update any user's profile by ID ───────────────────────────────────
+  updateUserById(id: string, updates: Partial<User>): void {
+    const isDynamic = this._dynamicUsers().some(u => u.id === id);
+    if (isDynamic) {
+      this._dynamicUsers.update(users => users.map(u => u.id === id ? { ...u, ...updates } : u));
+    } else {
+      // Mock user — store delta as an override (persisted under svb_ prefix so DB reset clears it)
+      this._userOverrides.update(ov => ({ ...ov, [id]: { ...(ov[id] ?? {}), ...updates } }));
+    }
+    // Keep active session in sync
+    if (this._user()?.id === id) {
+      const merged = { ...this._user()!, ...updates };
+      this._user.set(merged);
+      const store = localStorage.getItem(STORAGE_KEY) ? localStorage : sessionStorage;
+      store.setItem(STORAGE_KEY, JSON.stringify(merged));
+    }
+  }
+
+  // ── Admin: update login credentials for any user ─────────────────────────────
+  updateCredentialsByEmail(currentEmail: string, newEmail?: string, newPassword?: string): void {
+    const lc = currentEmail.toLowerCase().trim();
+    const ne = newEmail?.toLowerCase().trim();
+    // Retrieve the current password (dynamic override takes precedence)
+    const currentPwd = this._dynamicCreds()[lc] ?? MOCK_CREDENTIALS[lc] ?? '';
+
+    if (ne && ne !== lc) {
+      // Email changed — move credential entry to new email
+      this._dynamicCreds.update(c => {
+        const updated = { ...c };
+        delete updated[lc];
+        updated[ne] = newPassword ?? currentPwd;
+        return updated;
+      });
+    } else if (newPassword) {
+      // Password changed only
+      this._dynamicCreds.update(c => ({ ...c, [lc]: newPassword }));
+    }
+  }
+
+  // ── Admin: reset all dynamic data back to seed ────────────────────────────────
+  resetToSeedData(): void {
+    this._dynamicUsers.set([]);
+    this._dynamicCreds.set({});
+    this._userOverrides.set({});
+    localStorage.removeItem('svb_user_overrides');
   }
 
   private _generateTempPassword(): string {

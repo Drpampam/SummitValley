@@ -70,9 +70,94 @@ export class AdminComponent {
     denialMessage:    ['', Validators.required],
   });
 
+  // ── Edit User ─────────────────────────────────────────────────────────────
+  showEditUserForm  = signal(false);
+  editingUserTarget = signal<User | null>(null);
+
+  editUserForm = this.fb.group({
+    firstName:   ['', Validators.required],
+    lastName:    ['', Validators.required],
+    email:       ['', [Validators.required, Validators.email]],
+    phone:       [''],
+    address:     [''],
+    city:        [''],
+    state:       [''],
+    zip:         [''],
+    country:     ['US', Validators.required],
+    role:        ['user' as UserRole, Validators.required],
+    newPassword: [''],   // optional — blank = keep current
+  });
+
+  openEditUser(user: User): void {
+    this.editingUserTarget.set(user);
+    this.editUserForm.reset({
+      firstName:   user.firstName,
+      lastName:    user.lastName,
+      email:       user.email,
+      phone:       user.phone ?? '',
+      address:     user.address ?? '',
+      city:        user.city ?? '',
+      state:       user.state ?? '',
+      zip:         user.zip ?? '',
+      country:     user.country,
+      role:        user.role,
+      newPassword: '',
+    });
+    this.showEditUserForm.set(true);
+  }
+
+  cancelEditUser(): void {
+    this.showEditUserForm.set(false);
+    this.editingUserTarget.set(null);
+    this.editUserForm.reset();
+  }
+
+  submitEditUser(): void {
+    if (this.editUserForm.invalid) return;
+    const target = this.editingUserTarget();
+    if (!target) return;
+    const v = this.editUserForm.value;
+    const newEmail = v.email!.toLowerCase().trim();
+    const emailChanged = newEmail !== target.email;
+
+    // Guard: email conflict (ignore if unchanged)
+    if (emailChanged && this.auth.allUsersReactive().some(u => u.id !== target.id && u.email === newEmail)) {
+      this.toast.error('Another user already has this email address.');
+      return;
+    }
+
+    const locale = v.country === 'GB' ? 'en-GB' as const : 'en-US' as const;
+    this.auth.updateUserById(target.id, {
+      firstName: v.firstName!,
+      lastName:  v.lastName!,
+      email:     newEmail,
+      phone:     v.phone ?? '',
+      address:   v.address ?? '',
+      city:      v.city ?? '',
+      state:     v.state ?? '',
+      zip:       v.zip ?? '',
+      country:   v.country!,
+      role:      v.role as UserRole,
+      locale,
+    });
+
+    // Update credentials if email or password changed
+    if (emailChanged || v.newPassword) {
+      this.auth.updateCredentialsByEmail(
+        target.email,
+        emailChanged ? newEmail : undefined,
+        v.newPassword || undefined,
+      );
+    }
+
+    this.toast.success(`${v.firstName} ${v.lastName}'s profile updated`);
+    this.cancelEditUser();
+  }
+
   // ── Data ──────────────────────────────────────────────────────────────────
   readonly allUsers    = computed(() => this.auth.allUsersReactive().filter(u => u.role === 'user'));
   readonly allManagers = computed(() => this.auth.allUsersReactive().filter(u => u.role === 'account_manager'));
+  readonly allAdmins   = computed(() => this.auth.allUsersReactive().filter(u => u.role === 'admin'));
 
   private _getUser(id: string): User | undefined {
     return this.auth.allUsersReactive().find(u => u.id === id);
@@ -390,6 +475,7 @@ export class AdminComponent {
     this.storage.clearAll();
     this.txnSvc.resetToSeedData();
     this.accSvc.resetToSeedData();
+    this.auth.resetToSeedData();
     this.toast.success('Database reset to seed data. All changes cleared.', 4000);
   }
 }
