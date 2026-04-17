@@ -11,11 +11,11 @@ import { AccountAlert } from '../models/alert.model';
 
 // ── Credentials (email → password) ────────────────────────────────────────────
 export const MOCK_CREDENTIALS: Record<string, string> = {
-  'johnziland@gmail.com':       'Ziland@1234',
-  'johnziland@yahoo.com':       'Ziland@4321',
-  'omotoyejohn2@gmail.com':     'Omotoye@123',
-  'john.omotoye@yahoo.com':     'Manager@123',
-  'johnomotoye@gmail.com':      'Admin@1234',
+  'svb-ziland-us@mailinator.com':      'Ziland@1234',
+  'svb-ziland-uk@mailinator.com':      'Ziland@4321',
+  'svb-omotoye-user@mailinator.com':   'Omotoye@123',
+  'svb-omotoye-manager@mailinator.com':'Manager@123',
+  'svb-omotoye-admin@mailinator.com':  'Admin@1234',
 };
 
 // ── Users ──────────────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ export const MOCK_USERS: User[] = [
     id: 'user-001',
     firstName: 'John',
     lastName: 'Ziland',
-    email: 'johnziland@gmail.com',
+    email: 'svb-ziland-us@mailinator.com',
     phone: '+1 555 234 5678',
     address: '123 Main Street',
     city: 'New York',
@@ -40,7 +40,7 @@ export const MOCK_USERS: User[] = [
     id: 'user-002',
     firstName: 'John',
     lastName: 'Ziland',
-    email: 'johnziland@yahoo.com',
+    email: 'svb-ziland-uk@mailinator.com',
     phone: '+44 20 7946 0321',
     address: '14 Baker Street',
     city: 'London',
@@ -55,7 +55,7 @@ export const MOCK_USERS: User[] = [
     id: 'user-003',
     firstName: 'John',
     lastName: 'Omotoye',
-    email: 'omotoyejohn2@gmail.com',
+    email: 'svb-omotoye-user@mailinator.com',
     phone: '+1 415 678 9012',
     address: '456 Market Street',
     city: 'San Francisco',
@@ -72,7 +72,7 @@ export const MOCK_USERS: User[] = [
     id: 'mgr-001',
     firstName: 'John',
     lastName: 'Omotoye',
-    email: 'john.omotoye@yahoo.com',
+    email: 'svb-omotoye-manager@mailinator.com',
     phone: '+1 212 555 0178',
     address: '789 Fifth Avenue',
     city: 'New York',
@@ -90,7 +90,7 @@ export const MOCK_USERS: User[] = [
     id: 'admin-001',
     firstName: 'John',
     lastName: 'Omotoye',
-    email: 'johnomotoye@gmail.com',
+    email: 'svb-omotoye-admin@mailinator.com',
     phone: '+1 800 639 2265',
     address: '1 Finance Plaza',
     city: 'New York',
