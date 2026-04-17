@@ -1,4 +1,6 @@
-const FROM_EMAIL = process.env.FROM_EMAIL || 'hello@summitvalleybank.com';
+const { Resend } = require('resend');
+
+const FROM_EMAIL = process.env.FROM_EMAIL || 'notifications@summitvalleybank.com';
 const FROM_NAME  = process.env.FROM_NAME  || 'Summit Valley Bank';
 
 // In production the Angular app calls /api/email/send on the same Vercel domain
@@ -23,34 +25,22 @@ module.exports = async (req, res) => {
   const template = buildTemplate(type, name || 'Valued Customer', data || {});
   if (!template) return res.status(400).json({ error: `Unknown email type: ${type}` });
 
-  const token   = process.env.MAILTRAP_API_TOKEN;
-  const inboxId = process.env.MAILTRAP_INBOX_ID;
-
-  if (!token || !inboxId) {
-    console.warn('[Email] MAILTRAP_API_TOKEN or MAILTRAP_INBOX_ID not set — skipping send');
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[Email] RESEND_API_KEY not configured — skipping send');
     return res.json({ success: true, skipped: true });
   }
 
   try {
-    const response = await fetch(`https://sandbox.api.mailtrap.io/api/send/${inboxId}`, {
-      method:  'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type':  'application/json',
-      },
-      body: JSON.stringify({
-        from:    { email: FROM_EMAIL, name: FROM_NAME },
-        to:      [{ email: to }],
-        subject: template.subject,
-        html:    template.html,
-      }),
+    const resend = new Resend(apiKey);
+    const result = await resend.emails.send({
+      from:    `${FROM_NAME} <${FROM_EMAIL}>`,
+      to:      [to],
+      subject: template.subject,
+      html:    template.html,
     });
-
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.errors?.join(', ') || response.statusText);
-
-    console.log(`[Email] ${type} → ${to} | id: ${result.message_ids?.[0]}`);
-    return res.json({ success: true, id: result.message_ids?.[0] });
+    console.log(`[Email] ${type} → ${to} | id: ${result.data?.id}`);
+    return res.json({ success: true, id: result.data?.id });
   } catch (err) {
     console.error(`[Email] Failed: ${err.message}`);
     return res.status(500).json({ error: err.message });
