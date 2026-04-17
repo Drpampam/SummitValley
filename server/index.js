@@ -1,12 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
-const { Resend } = require('resend');
 
-const app    = express();
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM   = `${process.env.FROM_NAME || 'Summit Valley Bank'} <${process.env.FROM_EMAIL || 'onboarding@resend.dev'}>`;
-const PORT   = process.env.PORT || 3000;
+const app  = express();
+const FROM = `${process.env.FROM_NAME || 'Summit Valley Bank'} <${process.env.FROM_EMAIL || 'hello@summitvalleybank.com'}>`;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors({ origin: ['http://localhost:4200', 'http://localhost:4201'] }));
 app.use(express.json());
@@ -22,15 +20,34 @@ app.post('/api/email/send', async (req, res) => {
   const template = buildTemplate(type, name || 'Valued Customer', data || {});
   if (!template) return res.status(400).json({ error: `Unknown email type: ${type}` });
 
+  const token    = process.env.MAILTRAP_API_TOKEN;
+  const inboxId  = process.env.MAILTRAP_INBOX_ID;
+
+  if (!token || !inboxId) {
+    console.warn('[Email] MAILTRAP_API_TOKEN or MAILTRAP_INBOX_ID not set — skipping send');
+    return res.json({ success: true, skipped: true });
+  }
+
   try {
-    const result = await resend.emails.send({
-      from:    FROM,
-      to:      [to],
-      subject: template.subject,
-      html:    template.html,
+    const response = await fetch(`https://sandbox.api.mailtrap.io/api/send/${inboxId}`, {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        from:    { email: process.env.FROM_EMAIL || 'hello@summitvalleybank.com', name: process.env.FROM_NAME || 'Summit Valley Bank' },
+        to:      [{ email: to }],
+        subject: template.subject,
+        html:    template.html,
+      }),
     });
-    console.log(`[Email] ${type} → ${to} | id: ${result.data?.id}`);
-    res.json({ success: true, id: result.data?.id });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.errors?.join(', ') || response.statusText);
+
+    console.log(`[Email] ${type} → ${to} | id: ${result.message_ids?.[0]}`);
+    res.json({ success: true, id: result.message_ids?.[0] });
   } catch (err) {
     console.error(`[Email] Failed to send ${type} to ${to}:`, err.message);
     res.status(500).json({ error: err.message });
@@ -40,7 +57,8 @@ app.post('/api/email/send', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n🏦 Summit Valley Bank Email Server`);
   console.log(`   Running on http://localhost:${PORT}`);
-  console.log(`   Resend key: ${process.env.RESEND_API_KEY?.startsWith('re_') ? '✓ configured' : '✗ not set — copy .env.example to .env'}\n`);
+  console.log(`   Mailtrap token:    ${process.env.MAILTRAP_API_TOKEN    ? '✓ configured' : '✗ not set'}`);
+  console.log(`   Mailtrap inbox ID: ${process.env.MAILTRAP_INBOX_ID     ? '✓ configured' : '✗ not set'}\n`);
 });
 
 // ════════════════════════════════════════════════════════════════════════════

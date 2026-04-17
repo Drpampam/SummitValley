@@ -1,6 +1,5 @@
-const { Resend } = require('resend');
-
-const FROM = `${process.env.FROM_NAME || 'Summit Valley Bank'} <${process.env.FROM_EMAIL || 'onboarding@resend.dev'}>`;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'hello@summitvalleybank.com';
+const FROM_NAME  = process.env.FROM_NAME  || 'Summit Valley Bank';
 
 // In production the Angular app calls /api/email/send on the same Vercel domain
 // (same-origin — no CORS headers needed). The headers below only matter for
@@ -24,21 +23,34 @@ module.exports = async (req, res) => {
   const template = buildTemplate(type, name || 'Valued Customer', data || {});
   if (!template) return res.status(400).json({ error: `Unknown email type: ${type}` });
 
-  if (!process.env.RESEND_API_KEY || !process.env.RESEND_API_KEY.startsWith('re_')) {
-    console.warn('[Email] RESEND_API_KEY not configured — skipping send');
+  const token   = process.env.MAILTRAP_API_TOKEN;
+  const inboxId = process.env.MAILTRAP_INBOX_ID;
+
+  if (!token || !inboxId) {
+    console.warn('[Email] MAILTRAP_API_TOKEN or MAILTRAP_INBOX_ID not set — skipping send');
     return res.json({ success: true, skipped: true });
   }
 
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const result = await resend.emails.send({
-      from:    FROM,
-      to:      [to],
-      subject: template.subject,
-      html:    template.html,
+    const response = await fetch(`https://sandbox.api.mailtrap.io/api/send/${inboxId}`, {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        from:    { email: FROM_EMAIL, name: FROM_NAME },
+        to:      [{ email: to }],
+        subject: template.subject,
+        html:    template.html,
+      }),
     });
-    console.log(`[Email] ${type} → ${to} | id: ${result.data?.id}`);
-    return res.json({ success: true, id: result.data?.id });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.errors?.join(', ') || response.statusText);
+
+    console.log(`[Email] ${type} → ${to} | id: ${result.message_ids?.[0]}`);
+    return res.json({ success: true, id: result.message_ids?.[0] });
   } catch (err) {
     console.error(`[Email] Failed: ${err.message}`);
     return res.status(500).json({ error: err.message });
