@@ -65,6 +65,24 @@ export class AccountService {
     );
   }
 
+  /** Reserve funds for a pending external transfer (reduces availableBalance only). */
+  holdFunds(accountId: string, amount: number): void {
+    this._allAccounts.update(accounts =>
+      accounts.map(a =>
+        a.id === accountId ? { ...a, availableBalance: a.availableBalance - amount } : a
+      )
+    );
+  }
+
+  /** Release a hold when a pending external transfer is rejected. */
+  releaseHold(accountId: string, amount: number): void {
+    this._allAccounts.update(accounts =>
+      accounts.map(a =>
+        a.id === accountId ? { ...a, availableBalance: a.availableBalance + amount } : a
+      )
+    );
+  }
+
   /** Add a new account (admin-created users). */
   addAccount(account: Account): void {
     this._allAccounts.update(accounts => [...accounts, account]);

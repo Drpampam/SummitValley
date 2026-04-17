@@ -516,12 +516,77 @@
       <ng-template mat-tab-label>
         <mat-icon class="tab-icon">receipt_long</mat-icon>
         Transactions
-        @if (stats().pending > 0) {
-          <span class="tab-badge warn">{{ stats().pending }} pending</span>
+        @if (pendingExternalTxns().length > 0) {
+          <span class="tab-badge warn">{{ pendingExternalTxns().length }} awaiting</span>
         }
       </ng-template>
 
       <div class="tab-body">
+
+        <!-- ── Pending Approvals Banner ──────────────────────────────────── -->
+        @if (pendingExternalTxns().length > 0) {
+          <div class="pending-approvals-banner">
+            <div class="pab-left">
+              <div class="pab-icon"><mat-icon>pending_actions</mat-icon></div>
+              <div>
+                <p class="pab-title">{{ pendingExternalTxns().length }} External Transfer{{ pendingExternalTxns().length === 1 ? '' : 's' }} Awaiting Approval</p>
+                <p class="pab-sub">Review and approve or reject each transfer below. Funds are on hold until actioned.</p>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ── Reject Panel ──────────────────────────────────────────────── -->
+        @if (rejectingTxn()) {
+          <div class="reject-panel">
+            <div class="reject-panel-head">
+              <div class="reject-panel-icon"><mat-icon>cancel</mat-icon></div>
+              <div>
+                <p class="reject-panel-title">Reject Transfer</p>
+                <p class="reject-panel-sub">
+                  <strong>{{ rejectingTxn()!.userName }}</strong> —
+                  {{ fmtAmount(rejectingTxn()!.amount, rejectingTxn()!.currency) }}
+                  to {{ rejectingTxn()!.description }}
+                </p>
+              </div>
+              <button mat-icon-button class="reject-panel-close" (click)="cancelRejectPanel()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
+            <div class="reject-panel-body">
+              <div class="reject-field-group">
+                <label class="reject-field-label">
+                  Rejection Reason <span style="color:var(--nb-danger)">*</span>
+                  <span class="reject-field-hint">This message will be shown to the customer and sent via email.</span>
+                </label>
+                <textarea
+                  class="reject-textarea"
+                  rows="3"
+                  placeholder="e.g. This transfer has been placed on hold pending identity verification. Please contact support."
+                  [value]="rejectionMessage()"
+                  (input)="rejectionMessage.set($any($event.target).value)"
+                ></textarea>
+              </div>
+
+              <div class="reject-default-row">
+                <label class="reject-default-toggle">
+                  <input type="checkbox" [checked]="saveAsDefault()" (change)="saveAsDefault.set($any($event.target).checked)" />
+                  <span>Save as default rejection message for <strong>{{ rejectingTxn()!.userName }}</strong></span>
+                </label>
+              </div>
+
+              <div class="reject-actions">
+                <button mat-stroked-button (click)="cancelRejectPanel()">Cancel</button>
+                <button mat-flat-button class="reject-confirm-btn" (click)="submitReject()" [disabled]="!rejectionMessage().trim()">
+                  <mat-icon>block</mat-icon>
+                  Reject Transfer
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
         <!-- Filters -->
         <div class="filter-bar">
           <mat-form-field appearance="outline" class="filter-field">
@@ -614,17 +679,48 @@
             <ng-container matColumnDef="status">
               <th mat-header-cell *matHeaderCellDef>Status</th>
               <td mat-cell *matCellDef="let txn">
-                <mat-select
-                  class="status-select"
-                  [ngModel]="txn.status"
-                  [class]="'status-sel-' + txn.status"
-                  (ngModelChange)="onStatusChange(txn.id, $event)"
-                  matTooltip="Change transaction status"
-                >
-                  @for (s of statusOptions; track s) {
-                    <mat-option [value]="s">{{ s | titlecase }}</mat-option>
-                  }
-                </mat-select>
+                @if (txn.transferType === 'external' && txn.status === 'pending') {
+                  <span class="status-pill pending-ext">
+                    <mat-icon>hourglass_empty</mat-icon>
+                    Awaiting Approval
+                  </span>
+                } @else {
+                  <mat-select
+                    class="status-select"
+                    [ngModel]="txn.status"
+                    [class]="'status-sel-' + txn.status"
+                    (ngModelChange)="onStatusChange(txn.id, $event)"
+                    matTooltip="Change transaction status"
+                  >
+                    @for (s of statusOptions; track s) {
+                      <mat-option [value]="s">{{ s | titlecase }}</mat-option>
+                    }
+                  </mat-select>
+                }
+                @if (txn.rejectionReason) {
+                  <span class="rejection-reason-hint" [matTooltip]="txn.rejectionReason">
+                    <mat-icon>info_outline</mat-icon> Reason
+                  </span>
+                }
+              </td>
+            </ng-container>
+
+            <!-- Approval actions (only for pending external transfers) -->
+            <ng-container matColumnDef="approval">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let txn">
+                @if (txn.transferType === 'external' && txn.status === 'pending') {
+                  <div class="approval-actions">
+                    <button mat-flat-button class="approve-btn" (click)="approveTransfer(txn.id)" matTooltip="Approve transfer">
+                      <mat-icon>check_circle</mat-icon>
+                      Approve
+                    </button>
+                    <button mat-stroked-button class="reject-btn" (click)="openRejectPanel(txn)" matTooltip="Reject transfer">
+                      <mat-icon>cancel</mat-icon>
+                      Reject
+                    </button>
+                  </div>
+                }
               </td>
             </ng-container>
 

@@ -128,47 +128,48 @@ export class TransactionService {
     const ref = `TRF-${Date.now()}`;
     const now = new Date().toISOString();
 
-    // Snapshot current balances before the transfer
     const fromBalBefore  = fromAcc?.balance ?? 0;
     const newFromBalance = fromBalBefore - request.amount;
 
     const newTxn: Transaction = {
-      id:          `txn-${Date.now()}`,
-      accountId:   request.fromAccountId,
-      date:        now,
-      description: request.isInternal
+      id:           `txn-${Date.now()}`,
+      accountId:    request.fromAccountId,
+      date:         now,
+      description:  request.isInternal
         ? 'Internal Transfer'
         : `Transfer to ${request.recipientName}`,
-      category:    'transfer',
-      type:        'debit',
-      amount:      request.amount,
-      balance:     newFromBalance,   // balance after debit
-      status:      'pending',
-      reference:   ref,
+      category:     'transfer',
+      type:         'debit',
+      amount:       request.amount,
+      balance:      newFromBalance,
+      status:       'pending',
+      reference:    ref,
+      transferType: request.isInternal ? 'internal' : 'external',
     };
 
     this._all.update(txns => [newTxn, ...txns]);
 
+    // ── External transfers: hold funds and wait for admin approval ────────────
+    if (!request.isInternal) {
+      this.accSvc.holdFunds(request.fromAccountId, request.amount);
+      return of(newTxn).pipe(delay(1000));
+    }
+
+    // ── Internal transfers: auto-complete immediately ─────────────────────────
     return of(newTxn).pipe(
       delay(1000),
       tap(() => {
-        // 1. Mark the debit as completed
         this._all.update(txns =>
           txns.map(t => t.id === newTxn.id ? { ...t, status: 'completed' } : t)
         );
-
-        // 2. Deduct from source account
         this.accSvc.updateBalance(request.fromAccountId, newFromBalance);
 
-        // 3. For internal transfers: credit the destination account
-        if (request.isInternal && request.toAccountId) {
+        if (request.toAccountId) {
           const toAcc        = this.accSvc.getAccountById(request.toAccountId);
           const toBalBefore  = toAcc?.balance ?? 0;
           const newToBalance = toBalBefore + request.amount;
-
           this.accSvc.updateBalance(request.toAccountId, newToBalance);
 
-          // Add a matching credit transaction on the receiving account
           const creditTxn: Transaction = {
             id:          `txn-${Date.now()}-cr`,
             accountId:   request.toAccountId,
@@ -180,26 +181,81 @@ export class TransactionService {
             balance:     newToBalance,
             status:      'completed',
             reference:   ref,
+            transferType: 'internal',
           };
           this._all.update(txns => [creditTxn, ...txns]);
         }
 
-        // Email: send transfer confirmation to user
         const txnUser = this.auth.user();
         if (txnUser?.role === 'user') {
-          const currency = fromAcc?.currency ?? 'USD';
-          const fmtAmt   = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(request.amount);
+          const currency     = fromAcc?.currency ?? 'USD';
+          const fmtAmt       = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(request.amount);
           const fromAccLabel = fromAcc ? `${fromAcc.type === 'checking' ? 'Checking' : 'Savings'} ···· ${fromAcc.accountNumber.slice(-4)}` : undefined;
           this.emailSvc.sendTransferConfirmation(txnUser.email, txnUser.firstName, {
             amount:      fmtAmt,
-            recipient:   request.isInternal ? 'Your account' : (request.recipientName ?? undefined),
+            recipient:   'Your account',
             fromAccount: fromAccLabel,
             reference:   ref,
-            isInternal:  request.isInternal,
+            isInternal:  true,
           });
         }
       }),
     );
+  }
+
+  /** Admin: approve a pending external transfer — finalises the balance deduction. */
+  approveExternalTransfer(txnId: string): void {
+    const txn = this._all().find(t => t.id === txnId);
+    if (!txn || txn.status !== 'pending') return;
+    const acc = this.accSvc.getAccountById(txn.accountId);
+    if (!acc) return;
+
+    const newBalance = acc.balance - txn.amount;
+    this.accSvc.updateBalance(txn.accountId, newBalance);
+    this._all.update(txns =>
+      txns.map(t => t.id === txnId ? { ...t, status: 'completed' } : t)
+    );
+
+    // Email: transfer confirmed
+    const allUsers = this.auth.allUsersReactive();
+    const owner = allUsers.find(u => u.id === acc.userId);
+    if (owner?.role === 'user') {
+      const currency     = acc.currency;
+      const fmtAmt       = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(txn.amount);
+      const accLabel     = `${acc.type === 'checking' ? 'Checking' : 'Savings'} ···· ${acc.accountNumber.slice(-4)}`;
+      this.emailSvc.sendTransferConfirmation(owner.email, owner.firstName, {
+        amount:      fmtAmt,
+        recipient:   txn.description.replace('Transfer to ', ''),
+        fromAccount: accLabel,
+        reference:   txn.reference,
+        isInternal:  false,
+      });
+    }
+  }
+
+  /** Admin: reject a pending external transfer — releases the hold and notifies the user. */
+  rejectExternalTransfer(txnId: string, reason: string): void {
+    const txn = this._all().find(t => t.id === txnId);
+    if (!txn || txn.status !== 'pending') return;
+    const acc = this.accSvc.getAccountById(txn.accountId);
+    if (!acc) return;
+
+    this.accSvc.releaseHold(txn.accountId, txn.amount);
+    this._all.update(txns =>
+      txns.map(t => t.id === txnId ? { ...t, status: 'failed', rejectionReason: reason } : t)
+    );
+
+    // Email: transfer blocked
+    const allUsers = this.auth.allUsersReactive();
+    const owner = allUsers.find(u => u.id === acc.userId);
+    if (owner?.role === 'user') {
+      const currency = acc.currency;
+      const fmtAmt   = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(txn.amount);
+      this.emailSvc.sendTransferBlocked(owner.email, owner.firstName, {
+        amount: fmtAmt,
+        reason,
+      });
+    }
   }
 
   /**

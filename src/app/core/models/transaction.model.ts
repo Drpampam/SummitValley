@@ -23,7 +23,9 @@ export interface Transaction {
   balance: number;
   status: TransactionStatus;
   reference?: string;
-  denialMessage?: string;   // set when blocked by a transaction policy
+  denialMessage?: string;    // set when blocked by a transaction policy
+  transferType?: 'internal' | 'external';  // set on transfer transactions
+  rejectionReason?: string;  // set when admin rejects a pending external transfer
 }
 
 export type PolicyRuleType = 'block_all_outgoing' | 'block_above_amount';

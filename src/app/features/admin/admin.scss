@@ -1129,3 +1129,153 @@
   .eu-form-body { padding: 14px 16px 20px; }
   .eu-form-head { padding: 16px; }
 }
+
+// ── Pending Approvals Banner ──────────────────────────────────────────────────
+.pending-approvals-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(234,179,8,.08) 0%, rgba(234,179,8,.04) 100%);
+  border: 1px solid rgba(234,179,8,.35);
+  border-radius: var(--nb-radius-lg);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  animation: fadeInUp .2s ease-out both;
+}
+
+.pab-left {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.pab-icon {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: rgba(234,179,8,.15);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  mat-icon { font-size: 20px; color: #ca8a04; }
+}
+
+.pab-title { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: #92400e; }
+.pab-sub   { margin: 0; font-size: 12px; color: #a16207; }
+
+// ── Pending status pill ───────────────────────────────────────────────────────
+.status-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 99px;
+  mat-icon { font-size: 13px; width: 13px; height: 13px; }
+
+  &.pending-ext {
+    background: rgba(234,179,8,.12);
+    color: #b45309;
+    border: 1px solid rgba(234,179,8,.3);
+    animation: pendingPulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pendingPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .65; }
+}
+
+.rejection-reason-hint {
+  display: inline-flex; align-items: center; gap: 3px;
+  margin-top: 4px; font-size: 11px; color: var(--nb-danger);
+  cursor: help;
+  mat-icon { font-size: 13px; width: 13px; height: 13px; }
+}
+
+// ── Approval action buttons ───────────────────────────────────────────────────
+.approval-actions {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+
+.approve-btn {
+  font-size: 12px !important; font-weight: 700 !important;
+  background: #16a34a !important; color: #fff !important;
+  border-radius: var(--nb-radius-sm) !important;
+  height: 32px !important; gap: 4px;
+  mat-icon { font-size: 15px; }
+  &:hover { background: #15803d !important; box-shadow: 0 3px 10px rgba(22,163,74,.35) !important; }
+}
+
+.reject-btn {
+  font-size: 12px !important; font-weight: 700 !important;
+  color: var(--nb-danger) !important; border-color: rgba(239,68,68,.4) !important;
+  border-radius: var(--nb-radius-sm) !important;
+  height: 32px !important; gap: 4px;
+  mat-icon { font-size: 15px; }
+  &:hover { background: var(--nb-danger-bg) !important; }
+}
+
+// ── Reject Panel ──────────────────────────────────────────────────────────────
+.reject-panel {
+  background: #fff5f5;
+  border: 1px solid rgba(239,68,68,.3);
+  border-radius: var(--nb-radius-lg);
+  margin-bottom: 16px;
+  overflow: hidden;
+  animation: fadeInUp .15s ease-out both;
+}
+
+.reject-panel-head {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 18px;
+  background: rgba(239,68,68,.06);
+  border-bottom: 1px solid rgba(239,68,68,.15);
+}
+
+.reject-panel-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(239,68,68,.12);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  mat-icon { font-size: 19px; color: var(--nb-danger); }
+}
+
+.reject-panel-title { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: #b91c1c; }
+.reject-panel-sub   { margin: 0; font-size: 12px; color: #dc2626; }
+.reject-panel-close { margin-left: auto; mat-icon { font-size: 18px; color: #b91c1c; } }
+
+.reject-panel-body {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px 18px;
+}
+
+.reject-field-group { display: flex; flex-direction: column; gap: 6px; }
+.reject-field-label {
+  font-size: 12px; font-weight: 700; color: #b91c1c;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.reject-field-hint { font-weight: 400; color: #dc2626; font-size: 11px; }
+
+.reject-textarea {
+  width: 100%; box-sizing: border-box;
+  padding: 10px 12px; font-size: 13px; line-height: 1.5;
+  border: 1px solid rgba(239,68,68,.4); border-radius: var(--nb-radius-md);
+  background: #fff; outline: none; resize: vertical; font-family: inherit;
+  &:focus { border-color: var(--nb-danger); box-shadow: 0 0 0 3px rgba(239,68,68,.1); }
+}
+
+.reject-default-row { padding: 4px 0; }
+.reject-default-toggle {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; font-size: 12px; color: var(--nb-text-secondary);
+  input[type="checkbox"] { cursor: pointer; accent-color: var(--nb-danger); }
+}
+
+.reject-actions {
+  display: flex; justify-content: flex-end; gap: 10px;
+}
+
+.reject-confirm-btn {
+  background: var(--nb-danger) !important; color: #fff !important;
+  border-radius: var(--nb-radius-sm) !important;
+  font-weight: 700 !important; gap: 5px;
+  box-shadow: 0 3px 10px rgba(239,68,68,.3) !important;
+  mat-icon { font-size: 16px; }
+  &:hover { box-shadow: 0 5px 16px rgba(239,68,68,.45) !important; }
+  &:disabled { background: var(--nb-border) !important; box-shadow: none !important; }
+}

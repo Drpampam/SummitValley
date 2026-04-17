@@ -28,6 +28,7 @@ import { MOCK_ACCOUNTS, MOCK_TRANSACTIONS, getManagerForUser } from '../../core/
 export interface AdminTxnRow extends Transaction {
   userName: string;
   userEmail: string;
+  userId: string;
   currency: 'USD' | 'GBP';
 }
 
@@ -174,6 +175,7 @@ export class AdminComponent {
           ...t,
           userName:  user ? `${user.firstName} ${user.lastName}` : '—',
           userEmail: user?.email ?? '—',
+          userId:    acc?.userId ?? '',
           currency:  acc?.currency ?? 'USD',
         } as AdminTxnRow;
       })
@@ -324,9 +326,85 @@ export class AdminComponent {
     this.closeDepositPanel();
   }
 
+  // ── Pending external transfer approvals ──────────────────────────────────
+  private _rejectionMessages = signal<Record<string, string>>(
+    this._loadRejectionMessages()
+  );
+
+  private _loadRejectionMessages(): Record<string, string> {
+    try {
+      return JSON.parse(localStorage.getItem('svb_rejection_messages') ?? 'null') ?? {};
+    } catch { return {}; }
+  }
+
+  readonly pendingExternalTxns = computed<AdminTxnRow[]>(() =>
+    this.txnRows().filter(t => t.transferType === 'external' && t.status === 'pending')
+  );
+
+  // Rejection panel state
+  rejectingTxn     = signal<AdminTxnRow | null>(null);
+  rejectionMessage = signal('');
+  saveAsDefault    = signal(false);
+
+  approveTransfer(txnId: string): void {
+    this.txnSvc.approveExternalTransfer(txnId);
+    const txn = this.txnRows().find(t => t.id === txnId);
+    this.toast.success(`Transfer approved${txn ? ' for ' + txn.userName : ''}`);
+  }
+
+  openRejectPanel(txn: AdminTxnRow): void {
+    const preset = this._rejectionMessages()[txn.userId] ?? '';
+    this.rejectingTxn.set(txn);
+    this.rejectionMessage.set(preset);
+    this.saveAsDefault.set(false);
+  }
+
+  cancelRejectPanel(): void {
+    this.rejectingTxn.set(null);
+    this.rejectionMessage.set('');
+    this.saveAsDefault.set(false);
+  }
+
+  submitReject(): void {
+    const txn    = this.rejectingTxn();
+    const reason = this.rejectionMessage().trim();
+    if (!txn || !reason) return;
+
+    if (this.saveAsDefault()) {
+      this._saveDefaultRejectionMessage(txn, reason);
+    }
+
+    this.txnSvc.rejectExternalTransfer(txn.id, reason);
+    this.toast.error(`Transfer rejected for ${txn.userName}`);
+    this.cancelRejectPanel();
+  }
+
+  private _saveDefaultRejectionMessage(txn: AdminTxnRow, message: string): void {
+    // Resolve userId from the transaction's account
+    const userId = (() => {
+      const allAccs = this.accSvc.accounts();
+      return allAccs.find(a => a.id === txn.accountId)?.userId ?? '';
+    })();
+    if (!userId) return;
+    const updated = { ...this._rejectionMessages(), [userId]: message };
+    this._rejectionMessages.set(updated);
+    localStorage.setItem('svb_rejection_messages', JSON.stringify(updated));
+  }
+
+  getDefaultRejectionMessage(userId: string): string {
+    return this._rejectionMessages()[userId] ?? '';
+  }
+
+  setDefaultRejectionMessage(userId: string, message: string): void {
+    const updated = { ...this._rejectionMessages(), [userId]: message };
+    this._rejectionMessages.set(updated);
+    localStorage.setItem('svb_rejection_messages', JSON.stringify(updated));
+    this.toast.success('Default rejection message saved');
+  }
+
   // ── Columns ───────────────────────────────────────────────────────────────
   readonly userCols    = ['index', 'name', 'email', 'joined', 'manager', 'accounts', 'balance', 'actions'];
-  readonly txnCols     = ['user', 'date', 'description', 'amount', 'type', 'status'];
+  readonly txnCols     = ['user', 'date', 'description', 'amount', 'type', 'status', 'approval'];
   readonly managerCols = ['name', 'email', 'clients'];
 
   // ── Helpers ───────────────────────────────────────────────────────────────
