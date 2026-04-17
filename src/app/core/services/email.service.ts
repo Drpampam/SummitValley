@@ -16,13 +16,23 @@ export class EmailService {
   private url  = `${environment.apiUrl}/email/send`;
 
   private send(payload: EmailPayload): void {
-    this.http.post(this.url, payload).pipe(
+    console.log(`[EmailService] ▶ Sending "${payload.type}" to ${payload.to} …`, payload);
+
+    this.http.post<{ success: boolean; id?: string; skipped?: boolean; error?: string }>(this.url, payload).pipe(
       catchError(err => {
-        // Email failures are non-blocking — log and continue
-        console.warn('[EmailService] Failed to send email:', err?.error?.error ?? err.message);
+        console.error(`[EmailService] ✖ HTTP error sending "${payload.type}" to ${payload.to}:`, err?.error ?? err.message);
         return of(null);
       })
-    ).subscribe();
+    ).subscribe(res => {
+      if (!res) return;
+      if (res.skipped) {
+        console.warn(`[EmailService] ⚠ Skipped "${payload.type}" — RESEND_API_KEY not configured on server.`);
+      } else if (res.id) {
+        console.log(`[EmailService] ✔ Sent "${payload.type}" to ${payload.to} | Resend ID: ${res.id}`);
+      } else {
+        console.warn(`[EmailService] ? Unexpected response for "${payload.type}":`, res);
+      }
+    });
   }
 
   // ── Login alert ────────────────────────────────────────────────────────────
