@@ -271,10 +271,10 @@ export class AuthService {
     }
   }
 
-  // ── Admin: reset all dynamic data back to seed ────────────────────────────────
+  // ── Admin: reset seed-user overrides; admin-created users are preserved ────────
   resetToSeedData(): void {
-    this._dynamicUsers.set([]);
-    this._dynamicCreds.set({});
+    // Only wipe overrides applied to MOCK seed users — dynamically created users
+    // and their credentials survive the reset intentionally.
     this._userOverrides.set({});
     localStorage.removeItem('svb_user_overrides');
   }

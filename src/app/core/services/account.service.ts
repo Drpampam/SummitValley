@@ -5,9 +5,10 @@ import { AuthService } from './auth.service';
 import { StorageService } from './storage.service';
 import { MOCK_ACCOUNTS } from '../data/mock-data';
 
-const STORAGE_KEY         = 'accounts';
-// Stored WITHOUT svb_ prefix so it survives storage.clearAll() on DB reset
-const ADMIN_DEPOSITS_KEY  = 'admin_deposit_amounts';
+const STORAGE_KEY           = 'accounts';
+// Stored WITHOUT svb_ prefix so they survive storage.clearAll() on DB reset
+const ADMIN_DEPOSITS_KEY    = 'admin_deposit_amounts';
+const DYNAMIC_ACCOUNTS_KEY  = 'dynamic_accounts';
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
@@ -17,17 +18,26 @@ export class AccountService {
   private _allAccounts: WritableSignal<Account[]>;
   /** Cumulative admin-deposited amount per accountId. Never wiped by DB reset. */
   private _adminDepositAmounts: WritableSignal<Record<string, number>>;
+  /** Accounts created for admin-created users. Never wiped by DB reset. */
+  private _dynamicAccounts: WritableSignal<Account[]>;
 
   constructor() {
     // Load persisted admin deposit totals first (needed during account init)
     const storedDeposits = this._loadJson<Record<string, number>>(ADMIN_DEPOSITS_KEY, {});
     this._adminDepositAmounts = signal<Record<string, number>>(storedDeposits);
 
+    // Load accounts for admin-created users (survive DB reset)
+    const storedDynamic = this._loadJson<Account[]>(DYNAMIC_ACCOUNTS_KEY, []);
+    this._dynamicAccounts = signal<Account[]>(storedDynamic);
+
     const stored = this.storage.get<Account[]>(STORAGE_KEY);
-    this._allAccounts = signal<Account[]>(stored ?? this._applyDeposits(MOCK_ACCOUNTS, storedDeposits));
+    this._allAccounts = signal<Account[]>(
+      stored ?? this._applyDeposits([...MOCK_ACCOUNTS, ...storedDynamic], storedDeposits)
+    );
 
     effect(() => { this.storage.set(STORAGE_KEY, this._allAccounts()); });
     effect(() => { localStorage.setItem(ADMIN_DEPOSITS_KEY, JSON.stringify(this._adminDepositAmounts())); });
+    effect(() => { localStorage.setItem(DYNAMIC_ACCOUNTS_KEY, JSON.stringify(this._dynamicAccounts())); });
   }
 
   private _loadJson<T>(key: string, fallback: T): T {
@@ -119,14 +129,16 @@ export class AccountService {
     );
   }
 
-  /** Add a new account (admin-created users). */
+  /** Add a new account (admin-created users). Persists through DB reset. */
   addAccount(account: Account): void {
     this._allAccounts.update(accounts => [...accounts, account]);
+    this._dynamicAccounts.update(accounts => [...accounts, account]);
   }
 
-  /** Reset accounts back to seed data — but re-apply any admin deposits so they survive. */
+  /** Reset accounts back to seed data — preserves admin-created user accounts and deposits. */
   resetToSeedData(): void {
     const deposits = this._adminDepositAmounts();
-    this._allAccounts.set(this._applyDeposits([...MOCK_ACCOUNTS], deposits));
+    const dynamic  = this._dynamicAccounts();
+    this._allAccounts.set(this._applyDeposits([...MOCK_ACCOUNTS, ...dynamic], deposits));
   }
 }
