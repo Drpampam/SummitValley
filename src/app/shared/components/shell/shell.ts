@@ -82,9 +82,14 @@ export class ShellComponent implements OnInit, OnDestroy {
   toggleSidebar(): void { this.isMobileOpen.update(v => !v); }
   closeSidebar():  void { this.isMobileOpen.set(false); }
 
+  readonly mustChangePassword = computed(() => this.auth.user()?.mustChangePassword === true);
+
   /** Nav items are computed based on the logged-in user's role. */
   readonly navItems = computed<NavItem[]>(() => {
-    const role = this.auth.user()?.role;
+    const user = this.auth.user();
+    // Block navigation until forced password change is complete
+    if (user?.mustChangePassword) return [];
+    const role = user?.role;
     if (role === 'admin') return [
       { path: '/admin',   icon: 'admin_panel_settings', label: 'Admin Console' },
       { path: '/profile', icon: 'manage_accounts',      label: 'Profile' },

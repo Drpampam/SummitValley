@@ -361,6 +361,12 @@
               <th mat-header-cell *matHeaderCellDef>Email</th>
               <td mat-cell *matCellDef="let user">
                 <span class="mono-text">{{ user.email }}</span>
+                @if (user.mustChangePassword) {
+                  <span class="temp-pw-badge" matTooltip="Awaiting first login — temp password not yet changed">
+                    <mat-icon>key</mat-icon>
+                    Temp password
+                  </span>
+                }
               </td>
             </ng-container>
 

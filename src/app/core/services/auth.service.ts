@@ -279,6 +279,30 @@ export class AuthService {
     localStorage.removeItem('svb_user_overrides');
   }
 
+  // ── Forgot password: generate temp password and email it ────────────────────
+  forgotPassword(email: string): Observable<void> {
+    const lc   = email.toLowerCase().trim();
+    const user = this.allUsersReactive().find(u => u.email === lc);
+    if (!user) {
+      return throwError(() => new Error('No account found with that email address.')).pipe(delay(1000));
+    }
+    const tempPassword = this._generateTempPassword();
+    this._dynamicCreds.update(creds => ({ ...creds, [lc]: tempPassword }));
+    this.emailSvc.sendForgotPasswordEmail(user.email, user.firstName, tempPassword);
+    return of(undefined).pipe(delay(1000));
+  }
+
+  // ── Reset password: verify temp password then set new one and log in ─────────
+  resetPassword(email: string, tempPassword: string, newPassword: string): Observable<User> {
+    const lc        = email.toLowerCase().trim();
+    const storedPwd = this._dynamicCreds()[lc];
+    if (!storedPwd || storedPwd !== tempPassword) {
+      return throwError(() => new Error('The temporary password you entered is incorrect.')).pipe(delay(800));
+    }
+    this.changePassword(lc, newPassword);
+    return this.login({ email: lc, password: newPassword, rememberMe: false });
+  }
+
   private _generateTempPassword(): string {
     const upper   = 'ABCDEFGHJKMNPQRSTUVWXYZ';
     const lower   = 'abcdefghjkmnpqrstuvwxyz';

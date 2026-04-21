@@ -98,6 +98,33 @@
   z-index: 1;
 }
 
+.nav-pw-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 12px;
+  gap: 8px;
+  mat-icon {
+    font-size: 32px; width: 32px; height: 32px;
+    color: rgba(255,255,255,.5);
+  }
+}
+
+.nav-pw-notice-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,.85);
+}
+
+.nav-pw-notice-sub {
+  margin: 0;
+  font-size: 11.5px;
+  color: rgba(255,255,255,.55);
+  line-height: 1.5;
+}
+
 .nav-section-label {
   font-size: 10px;
   font-weight: 700;

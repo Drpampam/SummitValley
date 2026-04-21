@@ -39,21 +39,29 @@
 
     <!-- Navigation -->
     <nav class="sidebar-nav">
-      <p class="nav-section-label">
-        @if (auth.isAdmin()) { System } @else if (auth.isManager()) { Workspace } @else { Main Menu }
-      </p>
-      @for (item of navItems(); track item.path) {
-        <a
-          class="nav-item"
-          [routerLink]="item.path"
-          routerLinkActive="active"
-          [matTooltip]="item.label"
-          matTooltipPosition="right"
-          (click)="closeSidebar()"
-        >
-          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
-          <span class="nav-label">{{ item.label }}</span>
-        </a>
+      @if (mustChangePassword()) {
+        <div class="nav-pw-notice">
+          <mat-icon>lock_reset</mat-icon>
+          <p class="nav-pw-notice-title">Action required</p>
+          <p class="nav-pw-notice-sub">Set your permanent password to access your account.</p>
+        </div>
+      } @else {
+        <p class="nav-section-label">
+          @if (auth.isAdmin()) { System } @else if (auth.isManager()) { Workspace } @else { Main Menu }
+        </p>
+        @for (item of navItems(); track item.path) {
+          <a
+            class="nav-item"
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [matTooltip]="item.label"
+            matTooltipPosition="right"
+            (click)="closeSidebar()"
+          >
+            <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+            <span class="nav-label">{{ item.label }}</span>
+          </a>
+        }
       }
     </nav>
 

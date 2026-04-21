@@ -9,8 +9,9 @@ export const routes: Routes = [
     path: 'auth',
     canActivate: [guestGuard],
     children: [
-      { path: 'login',    loadComponent: () => import('./features/auth/login/login').then(m => m.LoginComponent) },
-      { path: 'register', loadComponent: () => import('./features/auth/register/register').then(m => m.RegisterComponent) },
+      { path: 'login',           loadComponent: () => import('./features/auth/login/login').then(m => m.LoginComponent) },
+      { path: 'register',        loadComponent: () => import('./features/auth/register/register').then(m => m.RegisterComponent) },
+      { path: 'forgot-password', loadComponent: () => import('./features/auth/forgot-password/forgot-password').then(m => m.ForgotPasswordComponent) },
       { path: '', redirectTo: 'login', pathMatch: 'full' },
     ],
   },

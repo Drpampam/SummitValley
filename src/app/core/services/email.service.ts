@@ -113,6 +113,16 @@ export class EmailService {
       type: 'welcome',
       to,
       name,
+      data: { tempPassword, email: to },
+    });
+  }
+
+  // ── Forgot password ────────────────────────────────────────────────────────
+  sendForgotPasswordEmail(to: string, name: string, tempPassword: string): void {
+    this.send({
+      type: 'forgot_password',
+      to,
+      name,
       data: { tempPassword },
     });
   }

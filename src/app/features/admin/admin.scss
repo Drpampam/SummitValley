@@ -252,6 +252,22 @@
 .user-country { margin: 2px 0 0; font-size: 11px; color: var(--nb-text-muted); }
 
 .mono-text { font-family: monospace; font-size: 12px; color: var(--nb-text-secondary); }
+
+.temp-pw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  background: #fefce8;
+  border: 1px solid #fbbf24;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #92400e;
+  mat-icon { font-size: 12px; width: 12px; height: 12px; }
+}
+
 .date-cell { font-size: 12px; color: var(--nb-text-muted); white-space: nowrap; }
 .time-text { font-size: 11px; color: var(--nb-text-muted); }
 
