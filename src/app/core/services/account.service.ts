@@ -1,60 +1,63 @@
-import { Injectable, inject, signal, computed, effect, WritableSignal } from '@angular/core';
+import { Injectable, inject, signal, computed, WritableSignal } from '@angular/core';
 import { Observable, of, delay } from 'rxjs';
 import { Account } from '../models/account.model';
 import { AuthService } from './auth.service';
-import { StorageService } from './storage.service';
+import { SupabaseService } from './supabase.service';
 import { MOCK_ACCOUNTS } from '../data/mock-data';
 
-const STORAGE_KEY           = 'accounts';
-// Stored WITHOUT svb_ prefix so they survive storage.clearAll() on DB reset
-const ADMIN_DEPOSITS_KEY    = 'admin_deposit_amounts';
-const DYNAMIC_ACCOUNTS_KEY  = 'dynamic_accounts';
+function rowToAccount(r: Record<string, unknown>): Account {
+  return {
+    id:               r['id'] as string,
+    userId:           r['user_id'] as string,
+    type:             r['type'] as 'checking' | 'savings',
+    accountNumber:    r['account_number'] as string,
+    balance:          Number(r['balance']),
+    availableBalance: Number(r['available_balance']),
+    currency:         r['currency'] as 'USD' | 'GBP',
+    createdAt:        r['created_at'] as string,
+  };
+}
+
+function accountToRow(a: Account): Record<string, unknown> {
+  return {
+    id:               a.id,
+    user_id:          a.userId,
+    type:             a.type,
+    account_number:   a.accountNumber,
+    balance:          a.balance,
+    available_balance: a.availableBalance,
+    currency:         a.currency,
+    created_at:       a.createdAt,
+  };
+}
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
-  private auth    = inject(AuthService);
-  private storage = inject(StorageService);
+  private auth = inject(AuthService);
+  private sb   = inject(SupabaseService);
 
-  private _allAccounts: WritableSignal<Account[]>;
-  /** Cumulative admin-deposited amount per accountId. Never wiped by DB reset. */
-  private _adminDepositAmounts: WritableSignal<Record<string, number>>;
-  /** Accounts created for admin-created users. Never wiped by DB reset. */
-  private _dynamicAccounts: WritableSignal<Account[]>;
+  private _allAccounts: WritableSignal<Account[]> = signal([]);
 
   constructor() {
-    // Load persisted admin deposit totals first (needed during account init)
-    const storedDeposits = this._loadJson<Record<string, number>>(ADMIN_DEPOSITS_KEY, {});
-    this._adminDepositAmounts = signal<Record<string, number>>(storedDeposits);
-
-    // Load accounts for admin-created users (survive DB reset)
-    const storedDynamic = this._loadJson<Account[]>(DYNAMIC_ACCOUNTS_KEY, []);
-    this._dynamicAccounts = signal<Account[]>(storedDynamic);
-
-    const stored = this.storage.get<Account[]>(STORAGE_KEY);
-    this._allAccounts = signal<Account[]>(
-      stored ?? this._applyDeposits([...MOCK_ACCOUNTS, ...storedDynamic], storedDeposits)
-    );
-
-    effect(() => { this.storage.set(STORAGE_KEY, this._allAccounts()); });
-    effect(() => { localStorage.setItem(ADMIN_DEPOSITS_KEY, JSON.stringify(this._adminDepositAmounts())); });
-    effect(() => { localStorage.setItem(DYNAMIC_ACCOUNTS_KEY, JSON.stringify(this._dynamicAccounts())); });
+    this._loadFromSupabase();
   }
 
-  private _loadJson<T>(key: string, fallback: T): T {
-    try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; }
-    catch { return fallback; }
+  private async _loadFromSupabase(): Promise<void> {
+    const { data, error } = await this.sb.client.from('accounts').select('*');
+    if (error) { console.error('[AccountService] load error:', error); return; }
+    if (!data || data.length === 0) {
+      await this._seed();
+      return;
+    }
+    this._allAccounts.set(data.map(rowToAccount));
   }
 
-  private _applyDeposits(accounts: Account[], deposits: Record<string, number>): Account[] {
-    return accounts.map(a => {
-      const extra = deposits[a.id] ?? 0;
-      return extra > 0
-        ? { ...a, balance: a.balance + extra, availableBalance: a.availableBalance + extra }
-        : a;
-    });
+  private async _seed(): Promise<void> {
+    const { error } = await this.sb.client.from('accounts').insert(MOCK_ACCOUNTS.map(accountToRow));
+    if (error) { console.error('[AccountService] seed error:', error); return; }
+    this._allAccounts.set([...MOCK_ACCOUNTS]);
   }
 
-  /** Accounts visible to the current user based on their role. */
   readonly accounts = computed<Account[]>(() => {
     const user = this.auth.user();
     if (!user) return [];
@@ -91,35 +94,52 @@ export class AccountService {
   updateBalance(accountId: string, newBalance: number): void {
     this._allAccounts.update(accounts =>
       accounts.map(a =>
-        a.id === accountId ? { ...a, balance: newBalance, availableBalance: newBalance } : a
+        a.id === accountId
+          ? { ...a, balance: newBalance, availableBalance: newBalance }
+          : a
       )
     );
+    this.sb.client.from('accounts')
+      .update({ balance: newBalance, available_balance: newBalance })
+      .eq('id', accountId)
+      .then(({ error }) => { if (error) console.error('[AccountService] updateBalance error:', error); });
   }
 
-  /** Reserve funds for a pending external transfer (reduces availableBalance only). */
   holdFunds(accountId: string, amount: number): void {
     this._allAccounts.update(accounts =>
       accounts.map(a =>
-        a.id === accountId ? { ...a, availableBalance: a.availableBalance - amount } : a
+        a.id === accountId
+          ? { ...a, availableBalance: a.availableBalance - amount }
+          : a
       )
     );
+    const acc = this._allAccounts().find(a => a.id === accountId);
+    if (acc) {
+      this.sb.client.from('accounts')
+        .update({ available_balance: acc.availableBalance })
+        .eq('id', accountId)
+        .then(({ error }) => { if (error) console.error('[AccountService] holdFunds error:', error); });
+    }
   }
 
-  /** Release a hold when a pending external transfer is rejected. */
   releaseHold(accountId: string, amount: number): void {
     this._allAccounts.update(accounts =>
       accounts.map(a =>
-        a.id === accountId ? { ...a, availableBalance: a.availableBalance + amount } : a
+        a.id === accountId
+          ? { ...a, availableBalance: a.availableBalance + amount }
+          : a
       )
     );
+    const acc = this._allAccounts().find(a => a.id === accountId);
+    if (acc) {
+      this.sb.client.from('accounts')
+        .update({ available_balance: acc.availableBalance })
+        .eq('id', accountId)
+        .then(({ error }) => { if (error) console.error('[AccountService] releaseHold error:', error); });
+    }
   }
 
-  /**
-   * Record an admin/manager deposit. Updates both the live balance and the
-   * persistent deposit tally so balances survive DB reset.
-   */
   recordAdminDeposit(accountId: string, amount: number): void {
-    this._adminDepositAmounts.update(d => ({ ...d, [accountId]: (d[accountId] ?? 0) + amount }));
     this._allAccounts.update(accounts =>
       accounts.map(a =>
         a.id === accountId
@@ -127,18 +147,21 @@ export class AccountService {
           : a
       )
     );
+    const acc = this._allAccounts().find(a => a.id === accountId);
+    if (acc) {
+      this.sb.client.from('accounts')
+        .update({ balance: acc.balance, available_balance: acc.availableBalance })
+        .eq('id', accountId)
+        .then(({ error }) => { if (error) console.error('[AccountService] recordAdminDeposit error:', error); });
+    }
   }
 
-  /** Add a new account (admin-created users). Persists through DB reset. */
   addAccount(account: Account): void {
     this._allAccounts.update(accounts => [...accounts, account]);
-    this._dynamicAccounts.update(accounts => [...accounts, account]);
+    this.sb.client.from('accounts').insert(accountToRow(account))
+      .then(({ error }) => { if (error) console.error('[AccountService] addAccount error:', error); });
   }
 
-  /** Reset accounts back to seed data — preserves admin-created user accounts and deposits. */
-  resetToSeedData(): void {
-    const deposits = this._adminDepositAmounts();
-    const dynamic  = this._dynamicAccounts();
-    this._allAccounts.set(this._applyDeposits([...MOCK_ACCOUNTS, ...dynamic], deposits));
-  }
+  /** No-op — data now lives in Supabase and persists across deployments. */
+  resetToSeedData(): void { /* intentional no-op */ }
 }

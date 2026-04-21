@@ -1,60 +1,89 @@
-import { Injectable, inject, signal, computed, effect, WritableSignal } from '@angular/core';
+import { Injectable, inject, signal, computed, WritableSignal } from '@angular/core';
 import { Observable, of, delay, tap } from 'rxjs';
 import { Transaction, TransactionStatus, TransferRequest } from '../models/transaction.model';
 import { AuthService } from './auth.service';
 import { AccountService } from './account.service';
 import { PolicyService } from './policy.service';
-import { StorageService } from './storage.service';
 import { EmailService } from './email.service';
+import { SupabaseService } from './supabase.service';
 import { MOCK_TRANSACTIONS } from '../data/mock-data';
 
-const STORAGE_KEY         = 'transactions';
-// Stored WITHOUT svb_ prefix so it survives storage.clearAll() on DB reset
-const DEPOSIT_STORAGE_KEY = 'admin_deposit_txns';
+function rowToTransaction(r: Record<string, unknown>): Transaction {
+  return {
+    id:              r['id'] as string,
+    accountId:       r['account_id'] as string,
+    date:            r['date'] as string,
+    description:     r['description'] as string,
+    category:        r['category'] as Transaction['category'],
+    type:            r['type'] as Transaction['type'],
+    amount:          Number(r['amount']),
+    balance:         Number(r['balance']),
+    status:          r['status'] as TransactionStatus,
+    reference:       r['reference'] as string | undefined,
+    transferType:    r['transfer_type'] as Transaction['transferType'],
+    denialMessage:   r['denial_message'] as string | undefined,
+    rejectionReason: r['rejection_reason'] as string | undefined,
+  };
+}
+
+function transactionToRow(t: Transaction): Record<string, unknown> {
+  return {
+    id:               t.id,
+    account_id:       t.accountId,
+    date:             t.date,
+    description:      t.description,
+    category:         t.category,
+    type:             t.type,
+    amount:           t.amount,
+    balance:          t.balance,
+    status:           t.status,
+    reference:        t.reference ?? null,
+    transfer_type:    t.transferType ?? null,
+    denial_message:   t.denialMessage ?? null,
+    rejection_reason: t.rejectionReason ?? null,
+  };
+}
 
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
-  private auth       = inject(AuthService);
-  private accSvc     = inject(AccountService);
-  private policySvc  = inject(PolicyService);
-  private storage    = inject(StorageService);
-  private emailSvc   = inject(EmailService);
+  private auth      = inject(AuthService);
+  private accSvc    = inject(AccountService);
+  private policySvc = inject(PolicyService);
+  private emailSvc  = inject(EmailService);
+  private sb        = inject(SupabaseService);
 
-  private _all:         WritableSignal<Transaction[]>;
-  /** Admin/manager deposit transactions — never wiped by DB reset. */
-  private _depositTxns: WritableSignal<Transaction[]>;
+  private _all: WritableSignal<Transaction[]> = signal([]);
 
   constructor() {
-    // Load from localStorage — fall back to seed data on first run
-    const stored = this.storage.get<Transaction[]>(STORAGE_KEY);
-    this._all = signal<Transaction[]>(stored ?? MOCK_TRANSACTIONS);
-
-    // Load persistent admin deposit transactions (survive DB reset)
-    const storedDeposits = this._loadJson<Transaction[]>(DEPOSIT_STORAGE_KEY, []);
-    this._depositTxns = signal<Transaction[]>(storedDeposits);
-
-    effect(() => { this.storage.set(STORAGE_KEY, this._all()); });
-    effect(() => { localStorage.setItem(DEPOSIT_STORAGE_KEY, JSON.stringify(this._depositTxns())); });
+    this._loadFromSupabase();
   }
 
-  private _loadJson<T>(key: string, fallback: T): T {
-    try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; }
-    catch { return fallback; }
+  private async _loadFromSupabase(): Promise<void> {
+    const { data, error } = await this.sb.client.from('transactions').select('*');
+    if (error) { console.error('[TransactionService] load error:', error); return; }
+    if (!data || data.length === 0) {
+      await this._seed();
+      return;
+    }
+    this._all.set(data.map(rowToTransaction));
   }
 
-  /** All transactions merged (regular + persistent admin deposits). */
-  private get _merged(): Transaction[] {
-    return [...this._all(), ...this._depositTxns()];
+  private async _seed(): Promise<void> {
+    const rows = MOCK_TRANSACTIONS.map(transactionToRow);
+    // Insert in chunks of 200 to avoid request size limits
+    for (let i = 0; i < rows.length; i += 200) {
+      const { error } = await this.sb.client.from('transactions').insert(rows.slice(i, i + 200));
+      if (error) { console.error('[TransactionService] seed error:', error); return; }
+    }
+    this._all.set([...MOCK_TRANSACTIONS]);
   }
 
-  /** Transactions visible to the current user based on their role. */
   readonly transactions = computed<Transaction[]>(() => {
     const user = this.auth.user();
     if (!user) return [];
-    const all = [...this._all(), ...this._depositTxns()];
-    if (user.role === 'admin') return all;
+    if (user.role === 'admin') return this._all();
     const visibleIds = this.accSvc.accounts().map(a => a.id);
-    return all.filter(t => visibleIds.includes(t.accountId));
+    return this._all().filter(t => visibleIds.includes(t.accountId));
   });
 
   getTransactions(accountId?: string): Observable<Transaction[]> {
@@ -70,45 +99,39 @@ export class TransactionService {
       .slice(0, limit);
   }
 
-  /** All transactions for a specific accountId (admin/manager raw access). */
   getTransactionsByAccountId(accountId: string): Transaction[] {
-    return this._merged
+    return this._all()
       .filter(t => t.accountId === accountId)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
 
-  /** Admin-only: update the status of any transaction (covers both regular and deposit buckets). */
   updateTransactionStatus(txnId: string, status: TransactionStatus): void {
-    this._all.update(txns =>
-      txns.map(t => t.id === txnId ? { ...t, status } : t)
-    );
-    this._depositTxns.update(txns =>
-      txns.map(t => t.id === txnId ? { ...t, status } : t)
-    );
+    this._all.update(txns => txns.map(t => t.id === txnId ? { ...t, status } : t));
+    this.sb.client.from('transactions').update({ status }).eq('id', txnId)
+      .then(({ error }) => { if (error) console.error('[TransactionService] updateStatus error:', error); });
   }
 
   submitTransfer(request: TransferRequest): Observable<Transaction> {
-    // ── Policy check ─────────────────────────────────────────────────────────
+    // ── Policy check ──────────────────────────────────────────────────────────
     const check = this.policySvc.evaluateTransfer(request);
     if (!check.allowed) {
       const currentBalance = this.accSvc.getAccountById(request.fromAccountId)?.balance ?? 0;
       const deniedTxn: Transaction = {
-        id: `txn-${Date.now()}`,
-        accountId: request.fromAccountId,
-        date: new Date().toISOString(),
-        description: request.isInternal
-          ? 'Internal Transfer'
-          : `Transfer to ${request.recipientName}`,
-        category: 'transfer',
-        type: 'debit',
-        amount: request.amount,
-        balance: currentBalance,   // balance unchanged — transaction was blocked
-        status: 'failed',
-        reference: `DENIED-${Date.now()}`,
+        id:           `txn-${Date.now()}`,
+        accountId:    request.fromAccountId,
+        date:         new Date().toISOString(),
+        description:  request.isInternal ? 'Internal Transfer' : `Transfer to ${request.recipientName}`,
+        category:     'transfer',
+        type:         'debit',
+        amount:       request.amount,
+        balance:      currentBalance,
+        status:       'failed',
+        reference:    `DENIED-${Date.now()}`,
         denialMessage: check.denialMessage,
       };
       this._all.update(txns => [deniedTxn, ...txns]);
-      // Email: notify user their transfer was blocked
+      this._persistTxn(deniedTxn);
+
       const blockedUser = this.auth.user();
       if (blockedUser?.role === 'user') {
         const currency = this.accSvc.getAccountById(request.fromAccountId)?.currency ?? 'USD';
@@ -127,28 +150,26 @@ export class TransactionService {
 
     if (request.amount > availableBalance) {
       const insufficientTxn: Transaction = {
-        id:          `txn-${Date.now()}`,
-        accountId:   request.fromAccountId,
-        date:        new Date().toISOString(),
-        description: request.isInternal
-          ? 'Internal Transfer'
-          : `Transfer to ${request.recipientName}`,
-        category:    'transfer',
-        type:        'debit',
-        amount:      request.amount,
-        balance:     availableBalance,
-        status:      'failed',
-        reference:   `INSUF-${Date.now()}`,
+        id:           `txn-${Date.now()}`,
+        accountId:    request.fromAccountId,
+        date:         new Date().toISOString(),
+        description:  request.isInternal ? 'Internal Transfer' : `Transfer to ${request.recipientName}`,
+        category:     'transfer',
+        type:         'debit',
+        amount:       request.amount,
+        balance:      availableBalance,
+        status:       'failed',
+        reference:    `INSUF-${Date.now()}`,
         denialMessage: 'Insufficient funds.',
       };
       this._all.update(txns => [insufficientTxn, ...txns]);
+      this._persistTxn(insufficientTxn);
       return of(insufficientTxn).pipe(delay(800));
     }
 
     // ── Normal flow ───────────────────────────────────────────────────────────
     const ref = `TRF-${Date.now()}`;
     const now = new Date().toISOString();
-
     const fromBalBefore  = fromAcc?.balance ?? 0;
     const newFromBalance = fromBalBefore - request.amount;
 
@@ -156,9 +177,7 @@ export class TransactionService {
       id:           `txn-${Date.now()}`,
       accountId:    request.fromAccountId,
       date:         now,
-      description:  request.isInternal
-        ? 'Internal Transfer'
-        : `Transfer to ${request.recipientName}`,
+      description:  request.isInternal ? 'Internal Transfer' : `Transfer to ${request.recipientName}`,
       category:     'transfer',
       type:         'debit',
       amount:       request.amount,
@@ -169,42 +188,43 @@ export class TransactionService {
     };
 
     this._all.update(txns => [newTxn, ...txns]);
+    this._persistTxn(newTxn);
 
-    // ── External transfers: hold funds and wait for admin approval ────────────
     if (!request.isInternal) {
       this.accSvc.holdFunds(request.fromAccountId, request.amount);
       return of(newTxn).pipe(delay(1000));
     }
 
-    // ── Internal transfers: auto-complete immediately ─────────────────────────
     return of(newTxn).pipe(
       delay(1000),
       tap(() => {
-        this._all.update(txns =>
-          txns.map(t => t.id === newTxn.id ? { ...t, status: 'completed' } : t)
-        );
+        const completedTxn = { ...newTxn, status: 'completed' as TransactionStatus };
+        this._all.update(txns => txns.map(t => t.id === newTxn.id ? completedTxn : t));
+        this.sb.client.from('transactions').update({ status: 'completed' }).eq('id', newTxn.id)
+          .then(({ error }) => { if (error) console.error('[TransactionService] complete error:', error); });
+
         this.accSvc.updateBalance(request.fromAccountId, newFromBalance);
 
         if (request.toAccountId) {
           const toAcc        = this.accSvc.getAccountById(request.toAccountId);
-          const toBalBefore  = toAcc?.balance ?? 0;
-          const newToBalance = toBalBefore + request.amount;
+          const newToBalance = (toAcc?.balance ?? 0) + request.amount;
           this.accSvc.updateBalance(request.toAccountId, newToBalance);
 
           const creditTxn: Transaction = {
-            id:          `txn-${Date.now()}-cr`,
-            accountId:   request.toAccountId,
-            date:        now,
-            description: 'Internal Transfer Received',
-            category:    'transfer',
-            type:        'credit',
-            amount:      request.amount,
-            balance:     newToBalance,
-            status:      'completed',
-            reference:   ref,
+            id:           `txn-${Date.now()}-cr`,
+            accountId:    request.toAccountId,
+            date:         now,
+            description:  'Internal Transfer Received',
+            category:     'transfer',
+            type:         'credit',
+            amount:       request.amount,
+            balance:      newToBalance,
+            status:       'completed',
+            reference:    ref,
             transferType: 'internal',
           };
           this._all.update(txns => [creditTxn, ...txns]);
+          this._persistTxn(creditTxn);
         }
 
         const txnUser = this.auth.user();
@@ -224,7 +244,6 @@ export class TransactionService {
     );
   }
 
-  /** Admin: approve a pending external transfer — finalises the balance deduction. */
   approveExternalTransfer(txnId: string): void {
     const txn = this._all().find(t => t.id === txnId);
     if (!txn || txn.status !== 'pending') return;
@@ -233,16 +252,15 @@ export class TransactionService {
 
     const newBalance = acc.balance - txn.amount;
     this.accSvc.updateBalance(txn.accountId, newBalance);
-    this._all.update(txns =>
-      txns.map(t => t.id === txnId ? { ...t, status: 'completed' } : t)
-    );
+    this._all.update(txns => txns.map(t => t.id === txnId ? { ...t, status: 'completed' } : t));
+    this.sb.client.from('transactions').update({ status: 'completed' }).eq('id', txnId)
+      .then(({ error }) => { if (error) console.error('[TransactionService] approve error:', error); });
 
-    // Email: transfer confirmed (use reactive list — respects admin profile edits)
     const owner = this.auth.allUsersReactive().find(u => u.id === acc.userId);
     if (owner?.role === 'user') {
-      const currency     = acc.currency;
-      const fmtAmt       = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(txn.amount);
-      const accLabel     = `${acc.type === 'checking' ? 'Checking' : 'Savings'} ···· ${acc.accountNumber.slice(-4)}`;
+      const currency   = acc.currency;
+      const fmtAmt     = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(txn.amount);
+      const accLabel   = `${acc.type === 'checking' ? 'Checking' : 'Savings'} ···· ${acc.accountNumber.slice(-4)}`;
       this.emailSvc.sendTransferConfirmation(owner.email, owner.firstName, {
         amount:      fmtAmt,
         recipient:   txn.description.replace('Transfer to ', ''),
@@ -253,7 +271,6 @@ export class TransactionService {
     }
   }
 
-  /** Admin: reject a pending external transfer — releases the hold and notifies the user. */
   rejectExternalTransfer(txnId: string, reason: string): void {
     const txn = this._all().find(t => t.id === txnId);
     if (!txn || txn.status !== 'pending') return;
@@ -261,32 +278,22 @@ export class TransactionService {
     if (!acc) return;
 
     this.accSvc.releaseHold(txn.accountId, txn.amount);
-    this._all.update(txns =>
-      txns.map(t => t.id === txnId ? { ...t, status: 'failed', rejectionReason: reason } : t)
-    );
+    this._all.update(txns => txns.map(t => t.id === txnId ? { ...t, status: 'failed', rejectionReason: reason } : t));
+    this.sb.client.from('transactions').update({ status: 'failed', rejection_reason: reason }).eq('id', txnId)
+      .then(({ error }) => { if (error) console.error('[TransactionService] reject error:', error); });
 
-    // Email: transfer blocked
-    const allUsers = this.auth.allUsersReactive();
-    const owner = allUsers.find(u => u.id === acc.userId);
+    const owner = this.auth.allUsersReactive().find(u => u.id === acc.userId);
     if (owner?.role === 'user') {
       const currency = acc.currency;
       const fmtAmt   = new Intl.NumberFormat(currency === 'GBP' ? 'en-GB' : 'en-US', { style: 'currency', currency }).format(txn.amount);
-      this.emailSvc.sendTransferBlocked(owner.email, owner.firstName, {
-        amount: fmtAmt,
-        reason,
-      });
+      this.emailSvc.sendTransferBlocked(owner.email, owner.firstName, { amount: fmtAmt, reason });
     }
   }
 
-  /**
-   * Admin / account-manager only: credit a deposit directly into a customer account.
-   * Transaction is stored in a persistent separate store that survives DB reset.
-   */
   depositToAccount(accountId: string, amount: number, note?: string): void {
     const acc = this.accSvc.getAccountById(accountId);
     if (!acc) return;
 
-    // recordAdminDeposit updates the live balance AND persists the amount for reset survival
     this.accSvc.recordAdminDeposit(accountId, amount);
 
     const newBalance = acc.balance + amount;
@@ -304,10 +311,9 @@ export class TransactionService {
       reference:   `DEP-${Date.now()}`,
     };
 
-    // Store in the persistent deposit bucket (not cleared on DB reset)
-    this._depositTxns.update(txns => [txn, ...txns]);
+    this._all.update(txns => [txn, ...txns]);
+    this._persistTxn(txn);
 
-    // Email: notify the account owner — use reactive user list (respects profile edits)
     const owner = this.auth.allUsersReactive().find(u => u.id === acc.userId);
     if (owner?.role === 'user') {
       const currency    = acc.currency;
@@ -323,11 +329,13 @@ export class TransactionService {
     }
   }
 
-  /** Reset transactions back to seed data — admin deposits are preserved. */
-  resetToSeedData(): void {
-    this._all.set([...MOCK_TRANSACTIONS]);
-    // _depositTxns intentionally NOT reset — deposits survive
-  }
+  /** No-op — data now lives in Supabase and persists across deployments. */
+  resetToSeedData(): void { /* intentional no-op */ }
 
-  get allTransactions(): Transaction[] { return this._merged; }
+  get allTransactions(): Transaction[] { return this._all(); }
+
+  private _persistTxn(t: Transaction): void {
+    this.sb.client.from('transactions').insert(transactionToRow(t))
+      .then(({ error }) => { if (error) console.error('[TransactionService] persist error:', error); });
+  }
 }

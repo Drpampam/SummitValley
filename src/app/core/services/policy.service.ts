@@ -1,117 +1,151 @@
-import { Injectable, signal, computed, effect, WritableSignal, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, WritableSignal } from '@angular/core';
 import { TransactionPolicy, PolicyCheckResult, TransferRequest } from '../models/transaction.model';
-import { StorageService } from './storage.service';
 import { AccountService } from './account.service';
-
-const STORAGE_KEY = 'policies';
+import { SupabaseService } from './supabase.service';
 
 const DEFAULT_POLICIES: TransactionPolicy[] = [
   {
-    id: 'pol-default-001',
-    name: 'High-Value Transfer Limit',
-    enabled: false,
-    ruleType: 'block_above_amount',
+    id:              'pol-default-001',
+    name:            'High-Value Transfer Limit',
+    enabled:         false,
+    ruleType:        'block_above_amount',
     amountThreshold: 50000,
-    denialMessage: 'This transfer exceeds the maximum single-transaction limit. Please contact your account manager to authorise large transfers.',
-    createdBy: 'admin-001',
-    createdAt: new Date().toISOString(),
+    denialMessage:   'This transfer exceeds the maximum single-transaction limit. Please contact your account manager to authorise large transfers.',
+    createdBy:       'admin-001',
+    createdAt:       new Date().toISOString(),
   },
 ];
 
+function rowToPolicy(r: Record<string, unknown>): TransactionPolicy {
+  return {
+    id:              r['id'] as string,
+    name:            r['name'] as string,
+    enabled:         r['enabled'] as boolean,
+    ruleType:        r['rule_type'] as TransactionPolicy['ruleType'],
+    amountThreshold: r['amount_threshold'] != null ? Number(r['amount_threshold']) : undefined,
+    targetUserId:    r['target_user_id'] as string | undefined,
+    denialMessage:   r['denial_message'] as string,
+    createdBy:       r['created_by'] as string,
+    createdAt:       r['created_at'] as string,
+  };
+}
+
+function policyToRow(p: TransactionPolicy): Record<string, unknown> {
+  return {
+    id:               p.id,
+    name:             p.name,
+    enabled:          p.enabled,
+    rule_type:        p.ruleType,
+    amount_threshold: p.amountThreshold ?? null,
+    target_user_id:   p.targetUserId ?? null,
+    denial_message:   p.denialMessage,
+    created_by:       p.createdBy,
+    created_at:       p.createdAt,
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class PolicyService {
-  private storage = inject(StorageService);
-  private accSvc  = inject(AccountService);
-  private _policies: WritableSignal<TransactionPolicy[]>;
+  private accSvc = inject(AccountService);
+  private sb     = inject(SupabaseService);
+
+  private _policies: WritableSignal<TransactionPolicy[]> = signal([]);
 
   constructor() {
-    const stored = this.storage.get<TransactionPolicy[]>(STORAGE_KEY);
-    this._policies = signal<TransactionPolicy[]>(stored ?? DEFAULT_POLICIES);
-
-    effect(() => {
-      this.storage.set(STORAGE_KEY, this._policies());
-    });
+    this._loadFromSupabase();
   }
 
-  readonly policies = computed(() => this._policies());
+  private async _loadFromSupabase(): Promise<void> {
+    const { data, error } = await this.sb.client.from('policies').select('*');
+    if (error) { console.error('[PolicyService] load error:', error); return; }
+    if (!data || data.length === 0) {
+      await this._seed();
+      return;
+    }
+    this._policies.set(data.map(rowToPolicy));
+  }
 
+  private async _seed(): Promise<void> {
+    const { error } = await this.sb.client.from('policies').insert(DEFAULT_POLICIES.map(policyToRow));
+    if (error) { console.error('[PolicyService] seed error:', error); return; }
+    this._policies.set([...DEFAULT_POLICIES]);
+  }
+
+  readonly policies       = computed(() => this._policies());
   readonly activePolicies = computed(() => this._policies().filter(p => p.enabled));
 
   addPolicy(policy: TransactionPolicy): void {
     this._policies.update(list => [policy, ...list]);
+    this.sb.client.from('policies').insert(policyToRow(policy))
+      .then(({ error }) => { if (error) console.error('[PolicyService] add error:', error); });
   }
 
   updatePolicy(id: string, updates: Partial<TransactionPolicy>): void {
-    this._policies.update(list =>
-      list.map(p => p.id === id ? { ...p, ...updates } : p)
-    );
+    this._policies.update(list => list.map(p => p.id === id ? { ...p, ...updates } : p));
+
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.name !== undefined)             dbUpdates['name']             = updates.name;
+    if (updates.enabled !== undefined)          dbUpdates['enabled']          = updates.enabled;
+    if (updates.ruleType !== undefined)         dbUpdates['rule_type']        = updates.ruleType;
+    if (updates.amountThreshold !== undefined)  dbUpdates['amount_threshold'] = updates.amountThreshold ?? null;
+    if (updates.targetUserId !== undefined)     dbUpdates['target_user_id']   = updates.targetUserId ?? null;
+    if (updates.denialMessage !== undefined)    dbUpdates['denial_message']   = updates.denialMessage;
+
+    if (Object.keys(dbUpdates).length > 0) {
+      this.sb.client.from('policies').update(dbUpdates).eq('id', id)
+        .then(({ error }) => { if (error) console.error('[PolicyService] update error:', error); });
+    }
   }
 
   togglePolicy(id: string): void {
-    this._policies.update(list =>
-      list.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p)
-    );
+    const current = this._policies().find(p => p.id === id);
+    if (!current) return;
+    const enabled = !current.enabled;
+    this._policies.update(list => list.map(p => p.id === id ? { ...p, enabled } : p));
+    this.sb.client.from('policies').update({ enabled }).eq('id', id)
+      .then(({ error }) => { if (error) console.error('[PolicyService] toggle error:', error); });
   }
 
   deletePolicy(id: string): void {
     this._policies.update(list => list.filter(p => p.id !== id));
+    this.sb.client.from('policies').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('[PolicyService] delete error:', error); });
   }
 
-  /**
-   * Evaluate whether a transfer request is permitted.
-   * Returns { allowed: true } or { allowed: false, denialMessage, policyName }.
-   */
   evaluateTransfer(request: TransferRequest): PolicyCheckResult {
     const enabled = this._policies().filter(p => p.enabled);
-    const userId = this.accSvc.getAccountById(request.fromAccountId)?.userId;
+    const userId  = this.accSvc.getAccountById(request.fromAccountId)?.userId;
 
     for (const policy of enabled) {
-      // Skip policies scoped to a different user
       if (policy.targetUserId && policy.targetUserId !== userId) continue;
 
       switch (policy.ruleType) {
         case 'block_all_outgoing':
-          return {
-            allowed: false,
-            denialMessage: policy.denialMessage,
-            policyName: policy.name,
-          };
+          return { allowed: false, denialMessage: policy.denialMessage, policyName: policy.name };
 
         case 'block_above_amount':
           if (policy.amountThreshold != null && request.amount > policy.amountThreshold) {
-            return {
-              allowed: false,
-              denialMessage: policy.denialMessage,
-              policyName: policy.name,
-            };
+            return { allowed: false, denialMessage: policy.denialMessage, policyName: policy.name };
           }
           break;
       }
     }
-
     return { allowed: true };
   }
 
-  /** Convenience: get policies scoped to a specific user (or global). */
   getPoliciesForUser(userId: string): TransactionPolicy[] {
     return this._policies().filter(p => !p.targetUserId || p.targetUserId === userId);
   }
 
-  /** Returns true if the given user is currently blocked from all outgoing txns. */
   isUserBlocked(userId: string): boolean {
     return this._policies().some(p =>
-      p.enabled &&
-      p.ruleType === 'block_all_outgoing' &&
-      (!p.targetUserId || p.targetUserId === userId)
+      p.enabled && p.ruleType === 'block_all_outgoing' && (!p.targetUserId || p.targetUserId === userId)
     );
   }
 
-  /** Get the active block_all_outgoing policy for a specific user (exact match). */
   getUserBlockPolicy(userId: string): TransactionPolicy | undefined {
     return this._policies().find(p =>
-      p.enabled &&
-      p.ruleType === 'block_all_outgoing' &&
-      p.targetUserId === userId
+      p.enabled && p.ruleType === 'block_all_outgoing' && p.targetUserId === userId
     );
   }
 }

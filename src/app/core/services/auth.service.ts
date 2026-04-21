@@ -1,72 +1,126 @@
-import { Injectable, signal, computed, inject, effect, WritableSignal } from '@angular/core';
+import { Injectable, signal, computed, inject, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, of, throwError, delay, tap } from 'rxjs';
 import { User, LoginCredentials, RegisterData, AppLocale, UserRole } from '../models/user.model';
-import { MOCK_CREDENTIALS, MOCK_USERS, getUserByEmail } from '../data/mock-data';
+import { MOCK_CREDENTIALS, MOCK_USERS } from '../data/mock-data';
 import { EmailService } from './email.service';
+import { SupabaseService } from './supabase.service';
 
-const STORAGE_KEY          = 'nb_user';
-const LOCKOUT_KEY          = 'nb_lockout';
-const DYNAMIC_USERS_KEY    = 'dynamic_users';
-const DYNAMIC_CREDS_KEY    = 'dynamic_credentials';
-const MAX_ATTEMPTS         = 5;
-const LOCKOUT_MS           = 5 * 60 * 1000; // 5 minutes
+const SESSION_KEY  = 'nb_user';
+const LOCKOUT_KEY  = 'nb_lockout';
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS   = 5 * 60 * 1000;
 
 interface LockoutRecord { attempts: number; lockedUntil: number | null; }
+
+// DB row → TypeScript model
+function rowToUser(r: Record<string, unknown>): User {
+  return {
+    id:                  r['id'] as string,
+    firstName:           r['first_name'] as string,
+    lastName:            r['last_name'] as string,
+    email:               r['email'] as string,
+    phone:               (r['phone'] as string) ?? '',
+    address:             (r['address'] as string) ?? '',
+    city:                (r['city'] as string) ?? '',
+    state:               (r['state'] as string) ?? '',
+    zip:                 (r['zip'] as string) ?? '',
+    country:             (r['country'] as string) ?? 'US',
+    locale:              (r['locale'] as AppLocale) ?? 'en-US',
+    role:                r['role'] as UserRole,
+    mustChangePassword:  (r['must_change_password'] as boolean) ?? false,
+    managedUserIds:      (r['managed_user_ids'] as string[]) ?? [],
+    avatarUrl:           r['avatar_url'] as string | undefined,
+    createdAt:           r['created_at'] as string,
+  };
+}
+
+function userToRow(u: User): Record<string, unknown> {
+  return {
+    id:                   u.id,
+    first_name:           u.firstName,
+    last_name:            u.lastName,
+    email:                u.email,
+    phone:                u.phone ?? '',
+    address:              u.address ?? '',
+    city:                 u.city ?? '',
+    state:                u.state ?? '',
+    zip:                  u.zip ?? '',
+    country:              u.country ?? 'US',
+    locale:               u.locale ?? 'en-US',
+    role:                 u.role,
+    must_change_password: u.mustChangePassword ?? false,
+    managed_user_ids:     u.managedUserIds ?? [],
+    avatar_url:           u.avatarUrl ?? null,
+    created_at:           u.createdAt,
+  };
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private emailSvc = inject(EmailService);
-  private _user = signal<User | null>(null);
+  private sb       = inject(SupabaseService);
 
-  private _dynamicUsers:   WritableSignal<User[]>;
-  private _dynamicCreds:   WritableSignal<Record<string, string>>;
-  private _userOverrides:  WritableSignal<Record<string, Partial<User>>>;
-
-  /** All users — MOCK seed (with overrides) + admin-created dynamic users. */
-  readonly allUsersReactive = computed<User[]>(() => {
-    const overrides = this._userOverrides();
-    const mockWithOverrides = MOCK_USERS.map(u =>
-      overrides[u.id] ? { ...u, ...overrides[u.id] } : u
-    );
-    return [...mockWithOverrides, ...this._dynamicUsers()];
-  });
+  private _user: WritableSignal<User | null>    = signal(null);
+  private _allUsers: WritableSignal<User[]>     = signal([]);
+  private _allCreds: WritableSignal<Record<string, string>> = signal({});
 
   readonly user            = this._user.asReadonly();
-  readonly isAuthenticated = computed(() => this._user() !== null);
-  readonly isAdmin         = computed(() => this._user()?.role === 'admin');
-  readonly isManager       = computed(() => this._user()?.role === 'account_manager');
-  readonly isUser          = computed(() => this._user()?.role === 'user');
+  readonly allUsersReactive = computed(() => this._allUsers());
+  readonly isAuthenticated  = computed(() => this._user() !== null);
+  readonly isAdmin          = computed(() => this._user()?.role === 'admin');
+  readonly isManager        = computed(() => this._user()?.role === 'account_manager');
+  readonly isUser           = computed(() => this._user()?.role === 'user');
 
   constructor(private router: Router) {
-    // Load dynamic users, credentials, and overrides from localStorage
-    this._dynamicUsers  = signal<User[]>(this._loadJson(DYNAMIC_USERS_KEY, []));
-    this._dynamicCreds  = signal<Record<string, string>>(this._loadJson(DYNAMIC_CREDS_KEY, {}));
-    this._userOverrides = signal<Record<string, Partial<User>>>(this._loadJson('svb_user_overrides', {}));
-    effect(() => { localStorage.setItem(DYNAMIC_USERS_KEY, JSON.stringify(this._dynamicUsers())); });
-    effect(() => { localStorage.setItem(DYNAMIC_CREDS_KEY, JSON.stringify(this._dynamicCreds())); });
-    effect(() => { localStorage.setItem('svb_user_overrides', JSON.stringify(this._userOverrides())); });
-
-    // Migrate legacy key if present
-    const legacy = localStorage.getItem('svb_user') ?? sessionStorage.getItem('svb_user');
-    if (legacy) {
-      localStorage.setItem(STORAGE_KEY, legacy);
-      localStorage.removeItem('svb_user');
-      sessionStorage.removeItem('svb_user');
-    }
-    const stored = localStorage.getItem(STORAGE_KEY) ?? sessionStorage.getItem(STORAGE_KEY);
+    // Restore session from storage
+    const stored = localStorage.getItem(SESSION_KEY) ?? sessionStorage.getItem(SESSION_KEY);
     if (stored) {
-      try { this._user.set(JSON.parse(stored)); }
-      catch {
-        localStorage.removeItem(STORAGE_KEY);
-        sessionStorage.removeItem(STORAGE_KEY);
-      }
+      try { this._user.set(JSON.parse(stored)); } catch { /* ignore */ }
     }
+    // Load users and credentials from Supabase
+    this._loadFromSupabase();
   }
 
-  private _loadJson<T>(key: string, fallback: T): T {
-    try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; }
-    catch { return fallback; }
+  private async _loadFromSupabase(): Promise<void> {
+    const db = this.sb.client;
+
+    const [{ data: users }, { data: creds }] = await Promise.all([
+      db.from('users').select('*'),
+      db.from('credentials').select('*'),
+    ]);
+
+    if (!users || users.length === 0) {
+      await this._seedUsers();
+      return;
+    }
+
+    this._allUsers.set(users.map(rowToUser));
+
+    const credMap: Record<string, string> = {};
+    (creds ?? []).forEach((r: Record<string, unknown>) => {
+      credMap[r['email'] as string] = r['password'] as string;
+    });
+    this._allCreds.set(credMap);
+  }
+
+  private async _seedUsers(): Promise<void> {
+    const db = this.sb.client;
+
+    const userRows = MOCK_USERS.map(userToRow);
+    const credRows = Object.entries(MOCK_CREDENTIALS).map(([email, password]) => ({ email, password }));
+
+    const [{ error: ue }, { error: ce }] = await Promise.all([
+      db.from('users').insert(userRows),
+      db.from('credentials').insert(credRows),
+    ]);
+
+    if (ue) { console.error('[AuthService] seed users error:', ue); return; }
+    if (ce) { console.error('[AuthService] seed credentials error:', ce); return; }
+
+    this._allUsers.set([...MOCK_USERS]);
+    const credMap: Record<string, string> = { ...MOCK_CREDENTIALS };
+    this._allCreds.set(credMap);
   }
 
   // ── Rate limiting ────────────────────────────────────────────────────────────
@@ -76,11 +130,9 @@ export class AuthService {
       return raw ? JSON.parse(raw) : { attempts: 0, lockedUntil: null };
     } catch { return { attempts: 0, lockedUntil: null }; }
   }
-
   private setLockout(email: string, record: LockoutRecord): void {
     sessionStorage.setItem(`${LOCKOUT_KEY}_${btoa(email)}`, JSON.stringify(record));
   }
-
   private clearLockout(email: string): void {
     sessionStorage.removeItem(`${LOCKOUT_KEY}_${btoa(email)}`);
   }
@@ -96,14 +148,13 @@ export class AuthService {
     const email = credentials.email.toLowerCase().trim();
     const record = this.getLockout(email);
 
-    // Check lockout
     if (record.lockedUntil && Date.now() < record.lockedUntil) {
       const secs = Math.ceil((record.lockedUntil - Date.now()) / 1000);
       return throwError(() => new Error(`Account locked. Try again in ${secs}s.`)).pipe(delay(300));
     }
 
-    const found    = this.allUsersReactive().find(u => u.email === email);
-    const expected = this._dynamicCreds()[email] ?? MOCK_CREDENTIALS[email];
+    const found    = this._allUsers().find(u => u.email === email);
+    const expected = this._allCreds()[email];
 
     if (!found || !expected || credentials.password !== expected) {
       const attempts = record.attempts + 1;
@@ -118,7 +169,7 @@ export class AuthService {
 
     this.clearLockout(email);
     const store = credentials.rememberMe ? localStorage : sessionStorage;
-    store.setItem(STORAGE_KEY, JSON.stringify(found));
+    store.setItem(SESSION_KEY, JSON.stringify(found));
     this._user.set(found);
     return of(found).pipe(
       delay(800),
@@ -144,7 +195,7 @@ export class AuthService {
       role: 'user',
       createdAt: new Date().toISOString(),
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
     this._user.set(newUser);
     return of(newUser).pipe(delay(1000));
   }
@@ -154,22 +205,20 @@ export class AuthService {
     if (!current) return;
     const merged = { ...current, ...updated };
     this._user.set(merged);
-    // Persist to whichever store originally held the session
-    if (localStorage.getItem(STORAGE_KEY)) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    if (localStorage.getItem(SESSION_KEY)) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(merged));
     } else {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(merged));
     }
   }
 
   logout(): void {
     this._user.set(null);
-    localStorage.removeItem(STORAGE_KEY);
-    sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
     this.router.navigate(['/auth/login']);
   }
 
-  /** Returns the home route for the currently authenticated user based on role. */
   homeRoute(): string {
     const user = this._user();
     if (user?.mustChangePassword) return '/change-password';
@@ -179,17 +228,12 @@ export class AuthService {
     return '/dashboard';
   }
 
-  /** All users — MOCK seed + dynamic (admin-only view). */
-  get allUsers(): User[] { return this.allUsersReactive(); }
+  get allUsers(): User[] { return this._allUsers(); }
 
-  // ── Admin: create a new user with a generated temp password ─────────────────
+  // ── Admin: create a new user ─────────────────────────────────────────────────
   createUser(data: {
-    firstName: string;
-    lastName:  string;
-    email:     string;
-    role:      UserRole;
-    country:   string;
-    phone?:    string;
+    firstName: string; lastName: string; email: string;
+    role: UserRole; country: string; phone?: string;
   }): { user: User; tempPassword: string } {
     const locale: AppLocale = data.country === 'GB' ? 'en-GB' : 'en-US';
     const tempPassword = this._generateTempPassword();
@@ -207,46 +251,83 @@ export class AuthService {
       mustChangePassword: true,
       createdAt:          new Date().toISOString(),
     };
-    this._dynamicUsers.update(users => [...users, user]);
-    this._dynamicCreds.update(creds => ({ ...creds, [user.email]: tempPassword }));
+
+    // Optimistic update
+    this._allUsers.update(users => [...users, user]);
+    this._allCreds.update(c => ({ ...c, [user.email]: tempPassword }));
+
+    // Persist to Supabase
+    this.sb.client.from('users').insert(userToRow(user))
+      .then(({ error }) => { if (error) console.error('[AuthService] createUser error:', error); });
+    this.sb.client.from('credentials').insert({ email: user.email, password: tempPassword })
+      .then(({ error }) => { if (error) console.error('[AuthService] createUser cred error:', error); });
+
     return { user, tempPassword };
   }
 
-  // ── Change password (called after first login or from profile) ───────────────
+  // ── Change password ──────────────────────────────────────────────────────────
   changePassword(email: string, newPassword: string): void {
     const lc = email.toLowerCase().trim();
-    // Always store in _dynamicCreds — this overrides MOCK_CREDENTIALS for seed users
-    // and updates credentials for dynamically created users
-    this._dynamicCreds.update(creds => ({ ...creds, [lc]: newPassword }));
-    // Clear mustChangePassword on the dynamic user record
-    this._dynamicUsers.update(users =>
+
+    // Update credential
+    this._allCreds.update(c => ({ ...c, [lc]: newPassword }));
+    this.sb.client.from('credentials')
+      .upsert({ email: lc, password: newPassword }, { onConflict: 'email' })
+      .then(({ error }) => { if (error) console.error('[AuthService] changePassword cred error:', error); });
+
+    // Clear mustChangePassword
+    this._allUsers.update(users =>
       users.map(u => u.email === lc ? { ...u, mustChangePassword: false } : u)
     );
-    // Update the active session
+    this.sb.client.from('users')
+      .update({ must_change_password: false })
+      .eq('email', lc)
+      .then(({ error }) => { if (error) console.error('[AuthService] changePassword user error:', error); });
+
+    // Update active session
     const current = this._user();
     if (current && current.email === lc) {
       const updated = { ...current, mustChangePassword: false };
       this._user.set(updated);
-      const store = localStorage.getItem(STORAGE_KEY) ? localStorage : sessionStorage;
-      store.setItem(STORAGE_KEY, JSON.stringify(updated));
+      const store = localStorage.getItem(SESSION_KEY) ? localStorage : sessionStorage;
+      store.setItem(SESSION_KEY, JSON.stringify(updated));
     }
   }
 
-  // ── Admin: update any user's profile by ID ───────────────────────────────────
+  // ── Admin: update any user profile by ID ────────────────────────────────────
   updateUserById(id: string, updates: Partial<User>): void {
-    const isDynamic = this._dynamicUsers().some(u => u.id === id);
-    if (isDynamic) {
-      this._dynamicUsers.update(users => users.map(u => u.id === id ? { ...u, ...updates } : u));
-    } else {
-      // Mock user — store delta as an override (persisted under svb_ prefix so DB reset clears it)
-      this._userOverrides.update(ov => ({ ...ov, [id]: { ...(ov[id] ?? {}), ...updates } }));
+    this._allUsers.update(users =>
+      users.map(u => u.id === id ? { ...u, ...updates } : u)
+    );
+
+    // Build DB-column update from Partial<User>
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.firstName !== undefined)        dbUpdates['first_name']           = updates.firstName;
+    if (updates.lastName !== undefined)         dbUpdates['last_name']            = updates.lastName;
+    if (updates.email !== undefined)            dbUpdates['email']                = updates.email;
+    if (updates.phone !== undefined)            dbUpdates['phone']                = updates.phone;
+    if (updates.address !== undefined)          dbUpdates['address']              = updates.address;
+    if (updates.city !== undefined)             dbUpdates['city']                 = updates.city;
+    if (updates.state !== undefined)            dbUpdates['state']                = updates.state;
+    if (updates.zip !== undefined)              dbUpdates['zip']                  = updates.zip;
+    if (updates.country !== undefined)          dbUpdates['country']              = updates.country;
+    if (updates.locale !== undefined)           dbUpdates['locale']               = updates.locale;
+    if (updates.role !== undefined)             dbUpdates['role']                 = updates.role;
+    if (updates.mustChangePassword !== undefined) dbUpdates['must_change_password'] = updates.mustChangePassword;
+    if (updates.managedUserIds !== undefined)   dbUpdates['managed_user_ids']     = updates.managedUserIds;
+    if (updates.avatarUrl !== undefined)        dbUpdates['avatar_url']           = updates.avatarUrl;
+
+    if (Object.keys(dbUpdates).length > 0) {
+      this.sb.client.from('users').update(dbUpdates).eq('id', id)
+        .then(({ error }) => { if (error) console.error('[AuthService] updateUserById error:', error); });
     }
-    // Keep active session in sync
+
+    // Sync active session
     if (this._user()?.id === id) {
       const merged = { ...this._user()!, ...updates };
       this._user.set(merged);
-      const store = localStorage.getItem(STORAGE_KEY) ? localStorage : sessionStorage;
-      store.setItem(STORAGE_KEY, JSON.stringify(merged));
+      const store = localStorage.getItem(SESSION_KEY) ? localStorage : sessionStorage;
+      store.setItem(SESSION_KEY, JSON.stringify(merged));
     }
   }
 
@@ -254,48 +335,50 @@ export class AuthService {
   updateCredentialsByEmail(currentEmail: string, newEmail?: string, newPassword?: string): void {
     const lc = currentEmail.toLowerCase().trim();
     const ne = newEmail?.toLowerCase().trim();
-    // Retrieve the current password (dynamic override takes precedence)
-    const currentPwd = this._dynamicCreds()[lc] ?? MOCK_CREDENTIALS[lc] ?? '';
+    const currentPwd = this._allCreds()[lc] ?? '';
 
     if (ne && ne !== lc) {
-      // Email changed — move credential entry to new email
-      this._dynamicCreds.update(c => {
+      this._allCreds.update(c => {
         const updated = { ...c };
         delete updated[lc];
         updated[ne] = newPassword ?? currentPwd;
         return updated;
       });
+      // Delete old row, insert new
+      this.sb.client.from('credentials').delete().eq('email', lc)
+        .then(() => {
+          this.sb.client.from('credentials')
+            .insert({ email: ne, password: newPassword ?? currentPwd })
+            .then(({ error }) => { if (error) console.error('[AuthService] updateCredentials error:', error); });
+        });
     } else if (newPassword) {
-      // Password changed only
-      this._dynamicCreds.update(c => ({ ...c, [lc]: newPassword }));
+      this._allCreds.update(c => ({ ...c, [lc]: newPassword }));
+      this.sb.client.from('credentials')
+        .upsert({ email: lc, password: newPassword }, { onConflict: 'email' })
+        .then(({ error }) => { if (error) console.error('[AuthService] updateCredentials error:', error); });
     }
   }
 
-  // ── Admin: reset seed-user overrides; admin-created users are preserved ────────
-  resetToSeedData(): void {
-    // Only wipe overrides applied to MOCK seed users — dynamically created users
-    // and their credentials survive the reset intentionally.
-    this._userOverrides.set({});
-    localStorage.removeItem('svb_user_overrides');
-  }
-
-  // ── Forgot password: generate temp password and email it ────────────────────
+  // ── Forgot password ──────────────────────────────────────────────────────────
   forgotPassword(email: string): Observable<void> {
     const lc   = email.toLowerCase().trim();
-    const user = this.allUsersReactive().find(u => u.email === lc);
+    const user = this._allUsers().find(u => u.email === lc);
     if (!user) {
       return throwError(() => new Error('No account found with that email address.')).pipe(delay(1000));
     }
     const tempPassword = this._generateTempPassword();
-    this._dynamicCreds.update(creds => ({ ...creds, [lc]: tempPassword }));
+    this._allCreds.update(creds => ({ ...creds, [lc]: tempPassword }));
+    this.sb.client.from('credentials')
+      .upsert({ email: lc, password: tempPassword }, { onConflict: 'email' })
+      .then(({ error }) => { if (error) console.error('[AuthService] forgotPassword error:', error); });
     this.emailSvc.sendForgotPasswordEmail(user.email, user.firstName, tempPassword);
     return of(undefined).pipe(delay(1000));
   }
 
-  // ── Reset password: verify temp password then set new one and log in ─────────
+  // ── Reset password ───────────────────────────────────────────────────────────
   resetPassword(email: string, tempPassword: string, newPassword: string): Observable<User> {
     const lc        = email.toLowerCase().trim();
-    const storedPwd = this._dynamicCreds()[lc];
+    const storedPwd = this._allCreds()[lc];
     if (!storedPwd || storedPwd !== tempPassword) {
       return throwError(() => new Error('The temporary password you entered is incorrect.')).pipe(delay(800));
     }
@@ -303,13 +386,16 @@ export class AuthService {
     return this.login({ email: lc, password: newPassword, rememberMe: false });
   }
 
+  // ── Legacy no-op (kept for any residual calls) ───────────────────────────────
+  resetToSeedData(): void { /* data now lives in Supabase — no local reset */ }
+
   private _generateTempPassword(): string {
     const upper   = 'ABCDEFGHJKMNPQRSTUVWXYZ';
     const lower   = 'abcdefghjkmnpqrstuvwxyz';
     const digits  = '23456789';
     const special = '@#$!';
     const all     = upper + lower + digits + special;
-    const parts: string[] = [
+    const parts   = [
       upper[Math.floor(Math.random() * upper.length)],
       lower[Math.floor(Math.random() * lower.length)],
       digits[Math.floor(Math.random() * digits.length)],
