@@ -17,7 +17,6 @@ import { AccountService } from '../../core/services/account.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { PolicyService } from '../../core/services/policy.service';
 import { EmailService } from '../../core/services/email.service';
-import { StorageService } from '../../core/services/storage.service';
 import { LocaleService } from '../../core/services/locale.service';
 import { ToastService } from '../../core/services/toast.service';
 import { User, UserRole } from '../../core/models/user.model';
@@ -51,7 +50,6 @@ export class AdminComponent {
   locSvc        = inject(LocaleService);
   policySvc     = inject(PolicyService);
   private emailSvc = inject(EmailService);
-  private storage  = inject(StorageService);
   private fb       = inject(FormBuilder);
   private toast    = inject(ToastService);
 
@@ -543,12 +541,4 @@ export class AdminComponent {
     return rt === 'block_all_outgoing' ? 'block' : 'money_off';
   }
 
-  /** Reset all data back to seed data and clear localStorage. */
-  resetDatabase(): void {
-    this.storage.clearAll();
-    this.txnSvc.resetToSeedData();
-    this.accSvc.resetToSeedData();
-    this.auth.resetToSeedData();
-    this.toast.success('Database reset to seed data. All changes cleared.', 4000);
-  }
 }
