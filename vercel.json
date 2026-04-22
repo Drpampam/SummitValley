@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "node scripts/set-env.js && npm run build",
   "outputDirectory": "dist/summit-valley-bank/browser",
   "redirects": [
     {
