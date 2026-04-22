@@ -75,3 +75,10 @@ ALTER TABLE credentials  DISABLE ROW LEVEL SECURITY;
 ALTER TABLE accounts     DISABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE policies     DISABLE ROW LEVEL SECURITY;
+
+-- ── Grant full access to the anon role (required even with RLS disabled) ───────
+GRANT SELECT, INSERT, UPDATE, DELETE ON users        TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON credentials  TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON accounts     TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON transactions TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON policies     TO anon;
