@@ -60,6 +60,7 @@ export class TransactionService {
 
   private async _loadFromSupabase(): Promise<void> {
     this._all.set([...MOCK_TRANSACTIONS]);
+    if (!this.sb.isConfigured) return;
     try {
       const { data, error } = await this.sb.client.from('transactions').select('*');
       if (error) { console.error('[TransactionService] load error — using mock fallback:', error); return; }
@@ -109,8 +110,10 @@ export class TransactionService {
 
   updateTransactionStatus(txnId: string, status: TransactionStatus): void {
     this._all.update(txns => txns.map(t => t.id === txnId ? { ...t, status } : t));
-    this.sb.client.from('transactions').update({ status }).eq('id', txnId)
-      .then(({ error }) => { if (error) console.error('[TransactionService] updateStatus error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('transactions').update({ status }).eq('id', txnId)
+        .then(({ error }) => { if (error) console.error('[TransactionService] updateStatus error:', error); });
+    }
   }
 
   submitTransfer(request: TransferRequest): Observable<Transaction> {
@@ -202,8 +205,10 @@ export class TransactionService {
       tap(() => {
         const completedTxn = { ...newTxn, status: 'completed' as TransactionStatus };
         this._all.update(txns => txns.map(t => t.id === newTxn.id ? completedTxn : t));
-        this.sb.client.from('transactions').update({ status: 'completed' }).eq('id', newTxn.id)
-          .then(({ error }) => { if (error) console.error('[TransactionService] complete error:', error); });
+        if (this.sb.isConfigured) {
+          this.sb.client.from('transactions').update({ status: 'completed' }).eq('id', newTxn.id)
+            .then(({ error }) => { if (error) console.error('[TransactionService] complete error:', error); });
+        }
 
         this.accSvc.updateBalance(request.fromAccountId, newFromBalance);
 
@@ -255,8 +260,10 @@ export class TransactionService {
     const newBalance = acc.balance - txn.amount;
     this.accSvc.updateBalance(txn.accountId, newBalance);
     this._all.update(txns => txns.map(t => t.id === txnId ? { ...t, status: 'completed' } : t));
-    this.sb.client.from('transactions').update({ status: 'completed' }).eq('id', txnId)
-      .then(({ error }) => { if (error) console.error('[TransactionService] approve error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('transactions').update({ status: 'completed' }).eq('id', txnId)
+        .then(({ error }) => { if (error) console.error('[TransactionService] approve error:', error); });
+    }
 
     const owner = this.auth.allUsersReactive().find(u => u.id === acc.userId);
     if (owner?.role === 'user') {
@@ -281,8 +288,10 @@ export class TransactionService {
 
     this.accSvc.releaseHold(txn.accountId, txn.amount);
     this._all.update(txns => txns.map(t => t.id === txnId ? { ...t, status: 'failed', rejectionReason: reason } : t));
-    this.sb.client.from('transactions').update({ status: 'failed', rejection_reason: reason }).eq('id', txnId)
-      .then(({ error }) => { if (error) console.error('[TransactionService] reject error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('transactions').update({ status: 'failed', rejection_reason: reason }).eq('id', txnId)
+        .then(({ error }) => { if (error) console.error('[TransactionService] reject error:', error); });
+    }
 
     const owner = this.auth.allUsersReactive().find(u => u.id === acc.userId);
     if (owner?.role === 'user') {
@@ -337,6 +346,7 @@ export class TransactionService {
   get allTransactions(): Transaction[] { return this._all(); }
 
   private _persistTxn(t: Transaction): void {
+    if (!this.sb.isConfigured) return;
     this.sb.client.from('transactions').insert(transactionToRow(t))
       .then(({ error }) => { if (error) console.error('[TransactionService] persist error:', error); });
   }

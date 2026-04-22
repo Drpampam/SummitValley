@@ -85,6 +85,7 @@ export class AuthService {
   private async _loadFromSupabase(): Promise<void> {
     // Always seed MOCK data immediately so login works before Supabase responds
     this._applyMockFallback();
+    if (!this.sb.isConfigured) return;
 
     try {
       const db = this.sb.client;
@@ -121,6 +122,7 @@ export class AuthService {
   }
 
   private async _seedUsers(): Promise<void> {
+    if (!this.sb.isConfigured) return;
     const db = this.sb.client;
 
     const userRows = MOCK_USERS.map(userToRow);
@@ -273,10 +275,12 @@ export class AuthService {
     this._allCreds.update(c => ({ ...c, [user.email]: tempPassword }));
 
     // Persist to Supabase
-    this.sb.client.from('users').insert(userToRow(user))
-      .then(({ error }) => { if (error) console.error('[AuthService] createUser error:', error); });
-    this.sb.client.from('credentials').insert({ email: user.email, password: tempPassword })
-      .then(({ error }) => { if (error) console.error('[AuthService] createUser cred error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('users').insert(userToRow(user))
+        .then(({ error }) => { if (error) console.error('[AuthService] createUser error:', error); });
+      this.sb.client.from('credentials').insert({ email: user.email, password: tempPassword })
+        .then(({ error }) => { if (error) console.error('[AuthService] createUser cred error:', error); });
+    }
 
     return { user, tempPassword };
   }
@@ -287,18 +291,22 @@ export class AuthService {
 
     // Update credential
     this._allCreds.update(c => ({ ...c, [lc]: newPassword }));
-    this.sb.client.from('credentials')
-      .upsert({ email: lc, password: newPassword }, { onConflict: 'email' })
-      .then(({ error }) => { if (error) console.error('[AuthService] changePassword cred error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('credentials')
+        .upsert({ email: lc, password: newPassword }, { onConflict: 'email' })
+        .then(({ error }) => { if (error) console.error('[AuthService] changePassword cred error:', error); });
+    }
 
     // Clear mustChangePassword
     this._allUsers.update(users =>
       users.map(u => u.email === lc ? { ...u, mustChangePassword: false } : u)
     );
-    this.sb.client.from('users')
-      .update({ must_change_password: false })
-      .eq('email', lc)
-      .then(({ error }) => { if (error) console.error('[AuthService] changePassword user error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('users')
+        .update({ must_change_password: false })
+        .eq('email', lc)
+        .then(({ error }) => { if (error) console.error('[AuthService] changePassword user error:', error); });
+    }
 
     // Update active session
     const current = this._user();
@@ -333,7 +341,7 @@ export class AuthService {
     if (updates.managedUserIds !== undefined)   dbUpdates['managed_user_ids']     = updates.managedUserIds;
     if (updates.avatarUrl !== undefined)        dbUpdates['avatar_url']           = updates.avatarUrl;
 
-    if (Object.keys(dbUpdates).length > 0) {
+    if (Object.keys(dbUpdates).length > 0 && this.sb.isConfigured) {
       this.sb.client.from('users').update(dbUpdates).eq('id', id)
         .then(({ error }) => { if (error) console.error('[AuthService] updateUserById error:', error); });
     }
@@ -360,18 +368,21 @@ export class AuthService {
         updated[ne] = newPassword ?? currentPwd;
         return updated;
       });
-      // Delete old row, insert new
-      this.sb.client.from('credentials').delete().eq('email', lc)
-        .then(() => {
-          this.sb.client.from('credentials')
-            .insert({ email: ne, password: newPassword ?? currentPwd })
-            .then(({ error }) => { if (error) console.error('[AuthService] updateCredentials error:', error); });
-        });
+      if (this.sb.isConfigured) {
+        this.sb.client.from('credentials').delete().eq('email', lc)
+          .then(() => {
+            this.sb.client.from('credentials')
+              .insert({ email: ne, password: newPassword ?? currentPwd })
+              .then(({ error }) => { if (error) console.error('[AuthService] updateCredentials error:', error); });
+          });
+      }
     } else if (newPassword) {
       this._allCreds.update(c => ({ ...c, [lc]: newPassword }));
-      this.sb.client.from('credentials')
-        .upsert({ email: lc, password: newPassword }, { onConflict: 'email' })
-        .then(({ error }) => { if (error) console.error('[AuthService] updateCredentials error:', error); });
+      if (this.sb.isConfigured) {
+        this.sb.client.from('credentials')
+          .upsert({ email: lc, password: newPassword }, { onConflict: 'email' })
+          .then(({ error }) => { if (error) console.error('[AuthService] updateCredentials error:', error); });
+      }
     }
   }
 
@@ -384,9 +395,11 @@ export class AuthService {
     }
     const tempPassword = this._generateTempPassword();
     this._allCreds.update(creds => ({ ...creds, [lc]: tempPassword }));
-    this.sb.client.from('credentials')
-      .upsert({ email: lc, password: tempPassword }, { onConflict: 'email' })
-      .then(({ error }) => { if (error) console.error('[AuthService] forgotPassword error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('credentials')
+        .upsert({ email: lc, password: tempPassword }, { onConflict: 'email' })
+        .then(({ error }) => { if (error) console.error('[AuthService] forgotPassword error:', error); });
+    }
     this.emailSvc.sendForgotPasswordEmail(user.email, user.firstName, tempPassword);
     return of(undefined).pipe(delay(1000));
   }

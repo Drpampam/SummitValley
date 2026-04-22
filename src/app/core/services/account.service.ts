@@ -44,6 +44,7 @@ export class AccountService {
 
   private async _loadFromSupabase(): Promise<void> {
     this._allAccounts.set([...MOCK_ACCOUNTS]);
+    if (!this.sb.isConfigured) return;
     try {
       const { data, error } = await this.sb.client.from('accounts').select('*');
       if (error) { console.error('[AccountService] load error — using mock fallback:', error); return; }
@@ -101,10 +102,12 @@ export class AccountService {
           : a
       )
     );
-    this.sb.client.from('accounts')
-      .update({ balance: newBalance, available_balance: newBalance })
-      .eq('id', accountId)
-      .then(({ error }) => { if (error) console.error('[AccountService] updateBalance error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('accounts')
+        .update({ balance: newBalance, available_balance: newBalance })
+        .eq('id', accountId)
+        .then(({ error }) => { if (error) console.error('[AccountService] updateBalance error:', error); });
+    }
   }
 
   holdFunds(accountId: string, amount: number): void {
@@ -116,7 +119,7 @@ export class AccountService {
       )
     );
     const acc = this._allAccounts().find(a => a.id === accountId);
-    if (acc) {
+    if (acc && this.sb.isConfigured) {
       this.sb.client.from('accounts')
         .update({ available_balance: acc.availableBalance })
         .eq('id', accountId)
@@ -133,7 +136,7 @@ export class AccountService {
       )
     );
     const acc = this._allAccounts().find(a => a.id === accountId);
-    if (acc) {
+    if (acc && this.sb.isConfigured) {
       this.sb.client.from('accounts')
         .update({ available_balance: acc.availableBalance })
         .eq('id', accountId)
@@ -150,7 +153,7 @@ export class AccountService {
       )
     );
     const acc = this._allAccounts().find(a => a.id === accountId);
-    if (acc) {
+    if (acc && this.sb.isConfigured) {
       this.sb.client.from('accounts')
         .update({ balance: acc.balance, available_balance: acc.availableBalance })
         .eq('id', accountId)
@@ -160,8 +163,10 @@ export class AccountService {
 
   addAccount(account: Account): void {
     this._allAccounts.update(accounts => [...accounts, account]);
-    this.sb.client.from('accounts').insert(accountToRow(account))
-      .then(({ error }) => { if (error) console.error('[AccountService] addAccount error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('accounts').insert(accountToRow(account))
+        .then(({ error }) => { if (error) console.error('[AccountService] addAccount error:', error); });
+    }
   }
 
   /** No-op — data now lives in Supabase and persists across deployments. */

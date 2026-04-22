@@ -57,6 +57,7 @@ export class PolicyService {
 
   private async _loadFromSupabase(): Promise<void> {
     this._policies.set([...DEFAULT_POLICIES]);
+    if (!this.sb.isConfigured) return;
     try {
       const { data, error } = await this.sb.client.from('policies').select('*');
       if (error) { console.error('[PolicyService] load error — using default fallback:', error); return; }
@@ -78,8 +79,10 @@ export class PolicyService {
 
   addPolicy(policy: TransactionPolicy): void {
     this._policies.update(list => [policy, ...list]);
-    this.sb.client.from('policies').insert(policyToRow(policy))
-      .then(({ error }) => { if (error) console.error('[PolicyService] add error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('policies').insert(policyToRow(policy))
+        .then(({ error }) => { if (error) console.error('[PolicyService] add error:', error); });
+    }
   }
 
   updatePolicy(id: string, updates: Partial<TransactionPolicy>): void {
@@ -93,7 +96,7 @@ export class PolicyService {
     if (updates.targetUserId !== undefined)     dbUpdates['target_user_id']   = updates.targetUserId ?? null;
     if (updates.denialMessage !== undefined)    dbUpdates['denial_message']   = updates.denialMessage;
 
-    if (Object.keys(dbUpdates).length > 0) {
+    if (Object.keys(dbUpdates).length > 0 && this.sb.isConfigured) {
       this.sb.client.from('policies').update(dbUpdates).eq('id', id)
         .then(({ error }) => { if (error) console.error('[PolicyService] update error:', error); });
     }
@@ -104,14 +107,18 @@ export class PolicyService {
     if (!current) return;
     const enabled = !current.enabled;
     this._policies.update(list => list.map(p => p.id === id ? { ...p, enabled } : p));
-    this.sb.client.from('policies').update({ enabled }).eq('id', id)
-      .then(({ error }) => { if (error) console.error('[PolicyService] toggle error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('policies').update({ enabled }).eq('id', id)
+        .then(({ error }) => { if (error) console.error('[PolicyService] toggle error:', error); });
+    }
   }
 
   deletePolicy(id: string): void {
     this._policies.update(list => list.filter(p => p.id !== id));
-    this.sb.client.from('policies').delete().eq('id', id)
-      .then(({ error }) => { if (error) console.error('[PolicyService] delete error:', error); });
+    if (this.sb.isConfigured) {
+      this.sb.client.from('policies').delete().eq('id', id)
+        .then(({ error }) => { if (error) console.error('[PolicyService] delete error:', error); });
+    }
   }
 
   evaluateTransfer(request: TransferRequest): PolicyCheckResult {
