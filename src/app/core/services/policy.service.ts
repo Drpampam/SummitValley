@@ -56,13 +56,15 @@ export class PolicyService {
   }
 
   private async _loadFromSupabase(): Promise<void> {
-    const { data, error } = await this.sb.client.from('policies').select('*');
-    if (error) { console.error('[PolicyService] load error:', error); return; }
-    if (!data || data.length === 0) {
-      await this._seed();
-      return;
+    this._policies.set([...DEFAULT_POLICIES]);
+    try {
+      const { data, error } = await this.sb.client.from('policies').select('*');
+      if (error) { console.error('[PolicyService] load error — using default fallback:', error); return; }
+      if (!data || data.length === 0) { await this._seed(); return; }
+      this._policies.set(data.map(rowToPolicy));
+    } catch (err) {
+      console.error('[PolicyService] Supabase unreachable — using default fallback:', err);
     }
-    this._policies.set(data.map(rowToPolicy));
   }
 
   private async _seed(): Promise<void> {

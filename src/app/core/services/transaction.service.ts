@@ -59,13 +59,15 @@ export class TransactionService {
   }
 
   private async _loadFromSupabase(): Promise<void> {
-    const { data, error } = await this.sb.client.from('transactions').select('*');
-    if (error) { console.error('[TransactionService] load error:', error); return; }
-    if (!data || data.length === 0) {
-      await this._seed();
-      return;
+    this._all.set([...MOCK_TRANSACTIONS]);
+    try {
+      const { data, error } = await this.sb.client.from('transactions').select('*');
+      if (error) { console.error('[TransactionService] load error — using mock fallback:', error); return; }
+      if (!data || data.length === 0) { await this._seed(); return; }
+      this._all.set(data.map(rowToTransaction));
+    } catch (err) {
+      console.error('[TransactionService] Supabase unreachable — using mock fallback:', err);
     }
-    this._all.set(data.map(rowToTransaction));
   }
 
   private async _seed(): Promise<void> {

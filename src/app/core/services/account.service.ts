@@ -43,13 +43,15 @@ export class AccountService {
   }
 
   private async _loadFromSupabase(): Promise<void> {
-    const { data, error } = await this.sb.client.from('accounts').select('*');
-    if (error) { console.error('[AccountService] load error:', error); return; }
-    if (!data || data.length === 0) {
-      await this._seed();
-      return;
+    this._allAccounts.set([...MOCK_ACCOUNTS]);
+    try {
+      const { data, error } = await this.sb.client.from('accounts').select('*');
+      if (error) { console.error('[AccountService] load error — using mock fallback:', error); return; }
+      if (!data || data.length === 0) { await this._seed(); return; }
+      this._allAccounts.set(data.map(rowToAccount));
+    } catch (err) {
+      console.error('[AccountService] Supabase unreachable — using mock fallback:', err);
     }
-    this._allAccounts.set(data.map(rowToAccount));
   }
 
   private async _seed(): Promise<void> {

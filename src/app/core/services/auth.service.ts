@@ -83,25 +83,41 @@ export class AuthService {
   }
 
   private async _loadFromSupabase(): Promise<void> {
-    const db = this.sb.client;
+    // Always seed MOCK data immediately so login works before Supabase responds
+    this._applyMockFallback();
 
-    const [{ data: users }, { data: creds }] = await Promise.all([
-      db.from('users').select('*'),
-      db.from('credentials').select('*'),
-    ]);
+    try {
+      const db = this.sb.client;
+      const [{ data: users, error: ue }, { data: creds, error: ce }] = await Promise.all([
+        db.from('users').select('*'),
+        db.from('credentials').select('*'),
+      ]);
 
-    if (!users || users.length === 0) {
-      await this._seedUsers();
-      return;
+      if (ue || ce) {
+        console.error('[AuthService] Supabase load error — using mock fallback:', ue ?? ce);
+        return;
+      }
+
+      if (!users || users.length === 0) {
+        await this._seedUsers();
+        return;
+      }
+
+      this._allUsers.set(users.map(rowToUser));
+
+      const credMap: Record<string, string> = {};
+      (creds ?? []).forEach((r: Record<string, unknown>) => {
+        credMap[r['email'] as string] = r['password'] as string;
+      });
+      this._allCreds.set(credMap);
+    } catch (err) {
+      console.error('[AuthService] Supabase unreachable — using mock fallback:', err);
     }
+  }
 
-    this._allUsers.set(users.map(rowToUser));
-
-    const credMap: Record<string, string> = {};
-    (creds ?? []).forEach((r: Record<string, unknown>) => {
-      credMap[r['email'] as string] = r['password'] as string;
-    });
-    this._allCreds.set(credMap);
+  private _applyMockFallback(): void {
+    this._allUsers.set([...MOCK_USERS]);
+    this._allCreds.set({ ...MOCK_CREDENTIALS });
   }
 
   private async _seedUsers(): Promise<void> {
