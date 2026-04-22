@@ -16,6 +16,8 @@ export const MOCK_CREDENTIALS: Record<string, string> = {
   'svb-elena-vasquez@mailinator.com':   'Elena@1234',
   'svb-daniel-roland@mailinator.com':   'Daniel@123',
   'svb-rachel-kim@mailinator.com':      'Rachel@1234',
+  'sharonleechen92@gmail.com':          'Temp@Sharon1',
+  'dakaristeinigzx@hotmail.com':        'Temp@Dakari1',
 };
 
 // ── Users ──────────────────────────────────────────────────────────────────────
@@ -101,6 +103,34 @@ export const MOCK_USERS: User[] = [
     role: 'admin',
     createdAt: '2022-01-01T00:00:00Z',
   },
+
+  // ── Additional Customers ───────────────────────────────────────────────────
+  {
+    id: 'user-004',
+    firstName: 'Sharon',
+    lastName: 'Lee Chen',
+    email: 'sharonleechen92@gmail.com',
+    phone: '',
+    address: '', city: '', state: '', zip: '',
+    country: 'US',
+    locale: 'en-US',
+    role: 'user',
+    mustChangePassword: true,
+    createdAt: '2024-04-22T00:00:00Z',
+  },
+  {
+    id: 'user-005',
+    firstName: 'Dakari',
+    lastName: 'Steinig',
+    email: 'dakaristeinigzx@hotmail.com',
+    phone: '',
+    address: '', city: '', state: '', zip: '',
+    country: 'US',
+    locale: 'en-US',
+    role: 'user',
+    mustChangePassword: true,
+    createdAt: '2024-04-22T00:00:00Z',
+  },
 ];
 
 // ── Accounts ───────────────────────────────────────────────────────────────────
@@ -116,6 +146,14 @@ export const MOCK_ACCOUNTS: Account[] = [
   // Priya Patel (user-003) — USD
   { id: 'acc-005', userId: 'user-003', type: 'checking', accountNumber: '****9034', balance: 5280.00,  availableBalance: 5100.00,  currency: 'USD', createdAt: '2023-06-10T00:00:00Z' },
   { id: 'acc-006', userId: 'user-003', type: 'savings',  accountNumber: '****3471', balance: 18960.00, availableBalance: 18960.00, currency: 'USD', createdAt: '2023-06-10T00:00:00Z' },
+
+  // Sharon Lee Chen (user-004) — USD
+  { id: 'acc-007', userId: 'user-004', type: 'checking', accountNumber: '****5623', balance: 70000.00, availableBalance: 70000.00, currency: 'USD', createdAt: '2024-04-22T00:00:00Z' },
+  { id: 'acc-008', userId: 'user-004', type: 'savings',  accountNumber: '****8914', balance: 0.00,     availableBalance: 0.00,     currency: 'USD', createdAt: '2024-04-22T00:00:00Z' },
+
+  // Dakari Steinig (user-005) — USD
+  { id: 'acc-009', userId: 'user-005', type: 'checking', accountNumber: '****3741', balance: 70000.00, availableBalance: 70000.00, currency: 'USD', createdAt: '2024-04-22T00:00:00Z' },
+  { id: 'acc-010', userId: 'user-005', type: 'savings',  accountNumber: '****2056', balance: 0.00,     availableBalance: 0.00,     currency: 'USD', createdAt: '2024-04-22T00:00:00Z' },
 ];
 
 // ── Transactions ───────────────────────────────────────────────────────────────
