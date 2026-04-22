@@ -406,6 +406,27 @@ export class AdminComponent {
       u => u.role === 'account_manager' && u.managedUserIds?.includes(userId)
     );
   }
+
+  assignManager(userId: string, managerId: string): void {
+    const oldMgr = this.getManagerForUser(userId);
+    if (oldMgr && oldMgr.id !== managerId) {
+      this.auth.updateUserById(oldMgr.id, {
+        managedUserIds: (oldMgr.managedUserIds ?? []).filter(id => id !== userId),
+      });
+    }
+    if (managerId) {
+      const newMgr = this.auth.allUsersReactive().find(u => u.id === managerId);
+      if (newMgr && !(newMgr.managedUserIds ?? []).includes(userId)) {
+        this.auth.updateUserById(managerId, {
+          managedUserIds: [...(newMgr.managedUserIds ?? []), userId],
+        });
+      }
+      const name = newMgr ? `${newMgr.firstName} ${newMgr.lastName}` : 'manager';
+      this.toast.success(`Assigned to ${name}`);
+    } else if (oldMgr) {
+      this.toast.info('Account manager removed');
+    }
+  }
   getAccountsByUserId(userId: string): Account[] {
     return this.accSvc.accounts().filter(a => a.userId === userId);
   }

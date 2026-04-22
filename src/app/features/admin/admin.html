@@ -15,7 +15,7 @@
       <div class="db-status-pill">
         <span class="db-dot"></span>
         <mat-icon>storage</mat-icon>
-        <span>localStorage DB</span>
+        <span>Supabase DB</span>
       </div>
       <div class="admin-role-pill">
         <mat-icon>verified_user</mat-icon>
@@ -374,18 +374,21 @@
               </td>
             </ng-container>
 
-            <!-- Manager -->
+            <!-- Manager (assignable) -->
             <ng-container matColumnDef="manager">
               <th mat-header-cell *matHeaderCellDef>Account Manager</th>
               <td mat-cell *matCellDef="let user">
-                @if (getManagerForUser(user.id); as mgr) {
-                  <div class="manager-cell">
-                    <div class="mgr-dot"></div>
-                    <span>{{ mgr.firstName }} {{ mgr.lastName }}</span>
-                  </div>
-                } @else {
-                  <span class="no-manager">Unassigned</span>
-                }
+                <mat-select
+                  class="manager-select"
+                  [value]="getManagerForUser(user.id)?.id ?? ''"
+                  (valueChange)="assignManager(user.id, $event)"
+                  panelClass="manager-select-panel"
+                >
+                  <mat-option value="">— Unassigned —</mat-option>
+                  @for (mgr of allManagers(); track mgr.id) {
+                    <mat-option [value]="mgr.id">{{ mgr.firstName }} {{ mgr.lastName }}</mat-option>
+                  }
+                </mat-select>
               </td>
             </ng-container>
 
