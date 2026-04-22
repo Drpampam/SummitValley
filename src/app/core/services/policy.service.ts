@@ -56,15 +56,14 @@ export class PolicyService {
   }
 
   private async _loadFromSupabase(): Promise<void> {
-    this._policies.set([...DEFAULT_POLICIES]);
     if (!this.sb.isConfigured) return;
     try {
       const { data, error } = await this.sb.client.from('policies').select('*');
-      if (error) { console.error('[PolicyService] load error — using default fallback:', error); return; }
+      if (error) { console.error('[PolicyService] load error:', error); return; }
       if (!data || data.length === 0) { await this._seed(); return; }
       this._policies.set(data.map(rowToPolicy));
     } catch (err) {
-      console.error('[PolicyService] Supabase unreachable — using default fallback:', err);
+      console.error('[PolicyService] Supabase unreachable:', err);
     }
   }
 

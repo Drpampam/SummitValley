@@ -6,7 +6,6 @@ import { AccountService } from './account.service';
 import { PolicyService } from './policy.service';
 import { EmailService } from './email.service';
 import { SupabaseService } from './supabase.service';
-import { MOCK_TRANSACTIONS } from '../data/mock-data';
 
 function rowToTransaction(r: Record<string, unknown>): Transaction {
   return {
@@ -59,26 +58,16 @@ export class TransactionService {
   }
 
   private async _loadFromSupabase(): Promise<void> {
-    this._all.set([...MOCK_TRANSACTIONS]);
     if (!this.sb.isConfigured) return;
     try {
       const { data, error } = await this.sb.client.from('transactions').select('*');
-      if (error) { console.error('[TransactionService] load error — using mock fallback:', error); return; }
-      if (!data || data.length === 0) { await this._seed(); return; }
-      this._all.set(data.map(rowToTransaction));
+      if (error) { console.error('[TransactionService] load error:', error); return; }
+      if (data && data.length > 0) {
+        this._all.set(data.map(rowToTransaction));
+      }
     } catch (err) {
-      console.error('[TransactionService] Supabase unreachable — using mock fallback:', err);
+      console.error('[TransactionService] Supabase unreachable:', err);
     }
-  }
-
-  private async _seed(): Promise<void> {
-    const rows = MOCK_TRANSACTIONS.map(transactionToRow);
-    // Insert in chunks of 200 to avoid request size limits
-    for (let i = 0; i < rows.length; i += 200) {
-      const { error } = await this.sb.client.from('transactions').insert(rows.slice(i, i + 200));
-      if (error) { console.error('[TransactionService] seed error:', error); return; }
-    }
-    this._all.set([...MOCK_TRANSACTIONS]);
   }
 
   readonly transactions = computed<Transaction[]>(() => {

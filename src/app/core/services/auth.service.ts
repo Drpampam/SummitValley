@@ -83,8 +83,6 @@ export class AuthService {
   }
 
   private async _loadFromSupabase(): Promise<void> {
-    // Always seed MOCK data immediately so login works before Supabase responds
-    this._applyMockFallback();
     if (!this.sb.isConfigured) return;
 
     try {
@@ -95,7 +93,7 @@ export class AuthService {
       ]);
 
       if (ue || ce) {
-        console.error('[AuthService] Supabase load error — using mock fallback:', ue ?? ce);
+        console.error('[AuthService] Supabase load error:', ue ?? ce);
         return;
       }
 
@@ -112,13 +110,8 @@ export class AuthService {
       });
       this._allCreds.set(credMap);
     } catch (err) {
-      console.error('[AuthService] Supabase unreachable — using mock fallback:', err);
+      console.error('[AuthService] Supabase unreachable:', err);
     }
-  }
-
-  private _applyMockFallback(): void {
-    this._allUsers.set([...MOCK_USERS]);
-    this._allCreds.set({ ...MOCK_CREDENTIALS });
   }
 
   private async _seedUsers(): Promise<void> {
@@ -137,8 +130,7 @@ export class AuthService {
     if (ce) { console.error('[AuthService] seed credentials error:', ce); return; }
 
     this._allUsers.set([...MOCK_USERS]);
-    const credMap: Record<string, string> = { ...MOCK_CREDENTIALS };
-    this._allCreds.set(credMap);
+    this._allCreds.set({ ...MOCK_CREDENTIALS });
   }
 
   // ── Rate limiting ────────────────────────────────────────────────────────────
