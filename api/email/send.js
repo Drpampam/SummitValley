@@ -58,6 +58,7 @@ function buildTemplate(type, name, data) {
     case 'deposit':          return depositTemplate(name, data);
     case 'bill_payment':     return billPaymentTemplate(name, data);
     case 'welcome':          return welcomeTemplate(name, data);
+    case 'forgot_password':  return forgotPasswordTemplate(name, data);
     default: return null;
   }
 }
@@ -243,6 +244,26 @@ function welcomeTemplate(name, { tempPassword } = {}) {
     ${alertBox('🔒', 'If you did not request this account, please contact Summit Valley Bank support immediately.', '#fff8f8', '#FFCCCC')}
   `;
   return { subject: 'Welcome to Summit Valley Bank — your account is ready', html: base('Your new account is ready. Sign in with your temporary password.', body) };
+}
+
+// ── Forgot Password ───────────────────────────────────────────────────────────
+function forgotPasswordTemplate(name, { tempPassword } = {}) {
+  const body = `
+    ${greeting(name)}
+    <p style="margin:0 0 20px;font-size:14px;color:#555555;line-height:1.6;">
+      We received a request to reset your Summit Valley Bank account password. Use the temporary password below to complete the reset — it will be replaced once you set your new password.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#660000,#CC0000);border-radius:12px;margin:0 0 20px;overflow:hidden;">
+      <tr><td style="padding:26px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:12px;color:rgba(255,255,255,0.65);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Your Temporary Password</p>
+        <p style="margin:0;font-size:30px;font-weight:800;color:#FFCD41;font-family:monospace;letter-spacing:4px;">${tempPassword || '—'}</p>
+        <p style="margin:10px 0 0;font-size:11px;color:rgba(255,255,255,0.5);">Enter this on the password reset page</p>
+      </td></tr>
+    </table>
+    ${alertBox('🔑', '<strong>How to reset:</strong> Go to the Summit Valley Bank login page, click "Forgot password?", enter your email and this temporary password, then choose a new permanent password.', '#fffbeb', '#FEF08A')}
+    ${alertBox('🔒', 'If you did not request a password reset, please ignore this email — your account is still secure.', '#fff8f8', '#FFCCCC')}
+  `;
+  return { subject: 'Reset your Summit Valley Bank password', html: base('Your password reset temporary code is inside.', body) };
 }
 
 // ── Bill Payment Confirmation ─────────────────────────────────────────────────
