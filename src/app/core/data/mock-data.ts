@@ -14,7 +14,7 @@ export const MOCK_CREDENTIALS: Record<string, string> = {
   'svb-marcus-reynolds@mailinator.com': 'Marcus@1234',
   'svb-sophie-hartley@mailinator.com':  'Sophie@4321',
   'svb-elena-vasquez@mailinator.com':   'Elena@1234',
-  'svb-daniel-okafor@mailinator.com':   'Daniel@123',
+  'svb-daniel-roland@mailinator.com':   'Daniel@123',
   'svb-rachel-kim@mailinator.com':      'Rachel@1234',
 };
 
@@ -72,7 +72,7 @@ export const MOCK_USERS: User[] = [
     id: 'mgr-001',
     firstName: 'Daniel',
     lastName: 'Okafor',
-    email: 'svb-daniel-okafor@mailinator.com',
+    email: 'svb-daniel-roland@mailinator.com',
     phone: '+1 212 749 6032',
     address: '520 Park Avenue',
     city: 'New York',
