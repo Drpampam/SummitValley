@@ -59,6 +59,7 @@ function buildTemplate(type, name, data) {
     case 'bill_payment':     return billPaymentTemplate(name, data);
     case 'welcome':          return welcomeTemplate(name, data);
     case 'forgot_password':  return forgotPasswordTemplate(name, data);
+    case 'transfer_otp':     return transferOtpTemplate(name, data);
     default: return null;
   }
 }
@@ -297,4 +298,43 @@ function billPaymentTemplate(name, { biller, amount, confirmation, scheduledDate
     )}
   `;
   return { subject: `Bill payment of ${amount} to ${biller} scheduled — Summit Valley Bank`, html: base(`Your payment to ${biller} is scheduled`, body) };
+}
+
+// ── Transfer OTP ──────────────────────────────────────────────────────────────
+function transferOtpTemplate(name, data) {
+  const { code = '------', amount = '', recipient = '', date } = data;
+  const fmtDate = date ? new Date(date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  // Split code into individual digits for visual display
+  const digits = String(code).split('').map(d =>
+    `<td style="width:44px;height:54px;background:#f8f8f8;border:2px solid #CC0000;border-radius:8px;text-align:center;vertical-align:middle;font-size:28px;font-weight:800;color:#880000;font-family:monospace;">${d}</td><td style="width:8px;"></td>`
+  ).join('');
+
+  const body = `
+    ${greeting(name)}
+    <p style="margin:0 0 20px;font-size:15px;color:#444444;line-height:1.6;">
+      You have requested to transfer <strong>${amount}</strong> to <strong>${recipient}</strong>.
+      Use the verification code below to authorise this transaction.
+    </p>
+
+    <!-- Code display -->
+    <div style="background:linear-gradient(135deg,#660000 0%,#CC0000 100%);border-radius:14px;padding:28px 32px;text-align:center;margin-bottom:24px;">
+      <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:1.5px;">Your Verification Code</p>
+      <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+        <tr>${digits}</tr>
+      </table>
+      <p style="margin:14px 0 0;font-size:11px;color:rgba(255,255,255,0.6);">Valid for <strong style="color:#FFCD41;">5 minutes</strong> · Do not share this code</p>
+    </div>
+
+    ${detailTable(
+      infoRow('Transfer Amount', amount, true) +
+      infoRow('Recipient',       recipient) +
+      infoRow('Requested',       fmtDate)
+    )}
+
+    ${alertBox('⚠️', 'If you did not initiate this transfer, do not enter the code and contact us immediately at support@summitvalleybank.com.', '#fff7ed', '#fed7aa')}
+  `;
+  return {
+    subject: `Your Summit Valley Bank transfer verification code: ${code}`,
+    html: base(`Your verification code is ${code} — expires in 5 minutes`, body),
+  };
 }

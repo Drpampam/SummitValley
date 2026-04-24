@@ -5,7 +5,7 @@
     <div class="transfers-form-col">
 
       <!-- Tab Toggle (hidden while transfer is in progress) -->
-      @if (transferStep() === 0) {
+      @if (transferStep() === 0 && otpState() === 'idle') {
         <div class="transfer-toggle">
           <button
             class="toggle-btn"
@@ -23,6 +23,95 @@
             <mat-icon>send</mat-icon>
             {{ 'TRANSFERS.EXTERNAL' | translate }}
           </button>
+        </div>
+      }
+
+      <!-- ── OTP Verification Screen ──────────────────────── -->
+      @if (otpState() !== 'idle') {
+        <div class="otp-card">
+
+          <!-- Header -->
+          <div class="otp-header">
+            <div class="otp-icon-wrap">
+              @if (otpState() === 'sending') {
+                <mat-icon class="otp-icon spin">email</mat-icon>
+              } @else {
+                <mat-icon class="otp-icon">lock</mat-icon>
+              }
+            </div>
+            <div>
+              <h3 class="otp-title">Verify Your Transfer</h3>
+              <p class="otp-sub">
+                @if (otpState() === 'sending') {
+                  Sending code…
+                } @else {
+                  Code sent to <strong>{{ maskedEmail() }}</strong>
+                }
+              </p>
+            </div>
+            <button mat-icon-button class="otp-cancel-btn" (click)="cancelOtp()" matTooltip="Cancel">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          @if (otpState() === 'pending') {
+            <!-- Transfer summary -->
+            <div class="otp-summary">
+              <mat-icon>swap_horiz</mat-icon>
+              <span>
+                <strong>{{ fmt(lastAmount()) }}</strong>
+                @if (lastRecipient()) { to <strong>{{ lastRecipient() }}</strong> }
+              </span>
+            </div>
+
+            <!-- Code input -->
+            <div class="otp-input-section">
+              <label class="otp-input-label">Enter 6-digit verification code</label>
+              <input
+                class="otp-input"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                placeholder="— — — — — —"
+                [value]="otpInput()"
+                (input)="onOtpInput($event)"
+              />
+              @if (otpError()) {
+                <p class="otp-error">
+                  <mat-icon>error_outline</mat-icon>
+                  {{ otpError() }}
+                </p>
+              }
+            </div>
+
+            <!-- Timer + resend -->
+            <div class="otp-footer">
+              <div class="otp-timer" [class.otp-timer-urgent]="otpSecondsLeft() < 60">
+                <mat-icon>schedule</mat-icon>
+                @if (otpSecondsLeft() > 0) {
+                  Expires in {{ otpTimerDisplay() }}
+                } @else {
+                  Code expired
+                }
+              </div>
+              <button mat-button class="otp-resend-btn" (click)="resendOtp()">
+                <mat-icon>refresh</mat-icon>
+                Resend Code
+              </button>
+            </div>
+
+            <!-- Verify button -->
+            <button
+              class="otp-verify-btn"
+              [disabled]="otpInput().length < 6 || otpSecondsLeft() === 0 || !otpCodeSet()"
+              (click)="verifyOtp()"
+            >
+              <mat-icon>verified_user</mat-icon>
+              Confirm Transfer
+            </button>
+          }
+
         </div>
       }
 
@@ -116,7 +205,7 @@
       }
 
       <!-- ── Internal Transfer Form ─────────────────────────── -->
-      @if (transferStep() === 0 && activeTab() === 'internal') {
+      @if (transferStep() === 0 && otpState() === 'idle' && activeTab() === 'internal') {
         <div class="form-card">
           <form [formGroup]="internalForm" (ngSubmit)="submitInternal()">
 
@@ -198,7 +287,7 @@
       }
 
       <!-- ── External Transfer Form ─────────────────────────── -->
-      @if (transferStep() === 0 && activeTab() === 'external') {
+      @if (transferStep() === 0 && otpState() === 'idle' && activeTab() === 'external') {
         <div class="form-card">
           <form [formGroup]="externalForm" (ngSubmit)="submitExternal()">
 

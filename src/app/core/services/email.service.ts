@@ -127,6 +127,26 @@ export class EmailService {
     });
   }
 
+  // ── Transfer OTP ──────────────────────────────────────────────────────────
+  sendTransferOTP(
+    to: string,
+    name: string,
+    code: string,
+    opts: { amount: string; recipient: string }
+  ): void {
+    this.send({
+      type: 'transfer_otp',
+      to,
+      name,
+      data: {
+        code,
+        amount:    opts.amount,
+        recipient: opts.recipient,
+        date:      new Date().toISOString(),
+      },
+    });
+  }
+
   // ── Bill payment confirmation ──────────────────────────────────────────────
   sendBillPayConfirmation(
     to: string,
