@@ -44,11 +44,12 @@ export class LoginComponent {
   }
 
   readonly demoAccounts: DemoAccount[] = [
-    { label: 'Marcus Reynolds',  email: 'svb-marcus-reynolds@mailinator.com',  password: 'Marcus@1234',  icon: 'person',               badge: 'Customer'  },
-    { label: 'Sophie Hartley',   email: 'svb-sophie-hartley@mailinator.com',   password: 'Sophie@4321',  icon: 'person',               badge: 'Customer'  },
-    { label: 'Elena Vasquez',    email: 'svb-elena-vasquez@mailinator.com',     password: 'Elena@1234',   icon: 'person',               badge: 'Customer'  },
-    { label: 'Daniel Okafor',    email: 'svb-daniel-okafor@mailinator.com',     password: 'Daniel@123',   icon: 'badge',                badge: 'Manager'   },
-    { label: 'Rachel Kim',       email: 'svb-rachel-kim@mailinator.com',        password: 'Rachel@1234',  icon: 'admin_panel_settings', badge: 'Admin'     },
+    { label: 'Marcus Reynolds',  email: 'svb-marcus-reynolds@mailinator.com',        password: 'Marcus@1234',  icon: 'person',               badge: 'Customer'  },
+    { label: 'Sophie Hartley',   email: 'svb-sophie-hartley@mailinator.com',         password: 'Sophie@4321',  icon: 'person',               badge: 'Customer'  },
+    { label: 'Daniel Okafor',    email: 'svb-daniel-roland@mailinator.com',          password: 'Daniel@123',   icon: 'badge',                badge: 'Manager'   },
+    { label: 'Rachel Kim',       email: 'svb-rachel-kim@mailinator.com',             password: 'Rachel@1234',  icon: 'admin_panel_settings', badge: 'Admin'     },
+    { label: 'Charlotte Davies', email: 'cs-charlotte-davies@summitvalleybank.com',  password: 'CS@Charlotte1', icon: 'support_agent',        badge: 'CS Agent'  },
+    { label: 'Michael Torres',   email: 'cs-michael-torres@summitvalleybank.com',    password: 'CS@Michael1',  icon: 'support_agent',        badge: 'CS Agent'  },
   ];
 
   form = this.fb.group({

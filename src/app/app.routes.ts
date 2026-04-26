@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard, adminGuard, managerGuard } from './core/guards/auth.guard';
+import { authGuard, guestGuard, adminGuard, managerGuard, customerServiceGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -42,7 +42,10 @@ export const routes: Routes = [
       { path: 'admin',           canActivate: [adminGuard],   loadComponent: () => import('./features/admin/admin').then(m => m.AdminComponent) },
 
       // Manager panel
-      { path: 'manager',         canActivate: [managerGuard], loadComponent: () => import('./features/manager/manager').then(m => m.ManagerComponent) },
+      { path: 'manager',         canActivate: [managerGuard],         loadComponent: () => import('./features/manager/manager').then(m => m.ManagerComponent) },
+
+      // Customer Service console
+      { path: 'support',         canActivate: [customerServiceGuard], loadComponent: () => import('./features/support/support').then(m => m.SupportComponent) },
 
       // Change password (forced after first login with temp password)
       { path: 'change-password', loadComponent: () => import('./features/auth/change-password/change-password').then(m => m.ChangePasswordComponent) },

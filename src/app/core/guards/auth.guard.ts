@@ -35,3 +35,11 @@ export const managerGuard: CanActivateFn = () => {
   if (auth.isManager()) return true;
   return router.createUrlTree([auth.homeRoute()]);
 };
+
+export const customerServiceGuard: CanActivateFn = () => {
+  const auth   = inject(AuthService);
+  const router = inject(Router);
+  if (!auth.isAuthenticated()) return router.createUrlTree(['/auth/login']);
+  if (auth.isCustomerService()) return true;
+  return router.createUrlTree([auth.homeRoute()]);
+};

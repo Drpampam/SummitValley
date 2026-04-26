@@ -1,0 +1,586 @@
+// ── Tokens ───────────────────────────────────────────────────────────────────
+$primary:   #0f4c81;
+$accent:    #1976d2;
+$green:     #10b981;
+$amber:     #f59e0b;
+$red:       #ef4444;
+$purple:    #9333ea;
+$bg:        #f0f4f8;
+$surface:   #ffffff;
+$border:    #e2e8f0;
+$text:      #1e293b;
+$muted:     #64748b;
+$muted-bg:  #f8fafc;
+
+// ── Page shell ───────────────────────────────────────────────────────────────
+.sp-page {
+  min-height: 100%;
+  background: $bg;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
+.sp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.sp-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sp-agent-chip {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, $primary, $accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba($accent, .35);
+  flex-shrink: 0;
+  mat-icon { font-size: 26px; width: 26px; height: 26px; }
+}
+
+.sp-title {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  color: $text;
+}
+
+.sp-sub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: $muted;
+}
+
+.sp-kpi-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sp-kpi {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 12px;
+  padding: 12px 20px;
+  text-align: center;
+  min-width: 90px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+
+  &-val {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    color: $primary;
+    line-height: 1;
+  }
+
+  &-lbl {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: $muted;
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+
+  &-warn .sp-kpi-val { color: $amber; }
+  &-ok  .sp-kpi-val  { color: $green; }
+}
+
+// ── Tab bar ──────────────────────────────────────────────────────────────────
+.sp-tabs {
+  display: flex;
+  gap: 4px;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 12px;
+  padding: 5px;
+  width: fit-content;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+
+.sp-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: $muted;
+  cursor: pointer;
+  transition: all .18s;
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+  &-active {
+    background: $primary;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba($primary, .3);
+  }
+
+  &:not(&-active):hover {
+    background: rgba($accent, .07);
+    color: $accent;
+  }
+}
+
+.sp-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: rgba($muted, .15);
+  font-size: 11px;
+  font-weight: 700;
+
+  &-warn { background: rgba($amber, .2); color: #92400e; }
+}
+
+.sp-tab-active .sp-tab-count { background: rgba(#fff, .25); color: #fff; }
+
+// ── Panel ────────────────────────────────────────────────────────────────────
+.sp-panel {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.05);
+  overflow: hidden;
+}
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+.sp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid $border;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sp-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: $muted-bg;
+  border: 1px solid $border;
+  border-radius: 8px;
+  padding: 7px 12px;
+  min-width: 300px;
+  transition: border-color .15s;
+
+  &:focus-within { border-color: $accent; }
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; color: $muted; }
+
+  input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 14px;
+    color: $text;
+    flex: 1;
+    &::placeholder { color: $muted; }
+  }
+}
+
+.sp-clear {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  color: $muted;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  &:hover { color: $text; }
+}
+
+.sp-count {
+  font-size: 12px;
+  color: $muted;
+  white-space: nowrap;
+}
+
+// ── Filter pills ─────────────────────────────────────────────────────────────
+.sp-filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sp-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border: 1px solid $border;
+  border-radius: 20px;
+  background: $muted-bg;
+  font-size: 13px;
+  font-weight: 500;
+  color: $muted;
+  cursor: pointer;
+  transition: all .15s;
+
+  &.active {
+    background: $primary;
+    border-color: $primary;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba($primary, .3);
+  }
+
+  &:not(.active):hover { border-color: $accent; color: $accent; }
+}
+
+.sp-pill-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: rgba($muted, .2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sp-filter-pill.active .sp-pill-num { background: rgba(#fff, .25); }
+
+// ── Table ────────────────────────────────────────────────────────────────────
+.sp-scroll { overflow-x: auto; }
+
+.sp-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+
+  th {
+    padding: 11px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: $muted;
+    background: $muted-bg;
+    border-bottom: 1px solid $border;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 13px 14px;
+    font-size: 13px;
+    color: $text;
+    border-bottom: 1px solid $border;
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+}
+
+.sp-row {
+  cursor: pointer;
+  transition: background .12s;
+  &:hover td { background: #f8fafc; }
+  &-expanded td { background: rgba($accent, .04); }
+}
+
+.sp-chevron {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: $muted;
+}
+
+// ── Customer cell ─────────────────────────────────────────────────────────────
+.sp-customer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sp-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $primary, $accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &-sm { width: 26px; height: 26px; font-size: 11px; }
+}
+
+.sp-name { font-weight: 600; margin: 0; }
+
+.sp-muted { color: $muted; font-size: 12px; }
+
+.sp-flag { margin-right: 4px; }
+
+// ── Account pills ─────────────────────────────────────────────────────────────
+.sp-acc-pills { display: flex; flex-direction: column; gap: 3px; }
+
+.sp-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba($accent, .08);
+  color: $accent;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.sp-bal { font-size: 14px; font-weight: 700; color: $primary; }
+
+// ── Expanded detail ──────────────────────────────────────────────────────────
+.sp-detail-row td {
+  padding: 0;
+  background: $muted-bg;
+  border-bottom: 1px solid $border;
+}
+
+.sp-detail {
+  display: flex;
+  gap: 32px;
+  padding: 20px 60px;
+  flex-wrap: wrap;
+}
+
+.sp-detail-section { flex: 1; min-width: 200px; }
+
+.sp-detail-heading {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: $muted;
+}
+
+.sp-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sp-detail-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: $text;
+}
+
+.sp-dl {
+  font-size: 11px;
+  color: $muted;
+  font-weight: 600;
+}
+
+.sp-acc-detail-list {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sp-acc-card {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 150px;
+}
+
+.sp-acc-type {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: $muted;
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+}
+
+.sp-acc-num { margin: 6px 0 2px; font-size: 13px; font-weight: 600; color: $text; }
+.sp-acc-bal { margin: 0; font-size: 16px; font-weight: 800; color: $primary; }
+.sp-acc-avail { margin: 2px 0 0; font-size: 11px; color: $muted; }
+
+// ── Action buttons ────────────────────────────────────────────────────────────
+.sp-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+.sp-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+
+  &:disabled { opacity: .5; cursor: not-allowed; }
+
+  &.sp-btn-reset { background: rgba($muted, .12); color: $muted;
+    &:hover:not(:disabled) { background: rgba($muted, .22); color: $text; } }
+  &.sp-btn-blue  { background: rgba($accent, .1); color: $accent;
+    &:hover { background: rgba($accent, .2); } }
+  &.sp-btn-green { background: rgba($green, .1); color: $green;
+    &:hover { background: rgba($green, .2); } }
+  &.sp-btn-red   { background: rgba($red, .1); color: $red;
+    &:hover { background: rgba($red, .2); } }
+}
+
+.sp-closed {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: $muted;
+  font-style: italic;
+  mat-icon { font-size: 13px; width: 13px; height: 13px; }
+}
+
+// ── Dispute helpers ───────────────────────────────────────────────────────────
+.sp-mono { font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700; color: $primary; }
+
+.sp-reason-tag {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba($primary, .08);
+  color: $primary;
+  white-space: nowrap;
+}
+
+.sp-desc {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: $muted;
+}
+
+.sp-txn-ref {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sp-txn-amt {
+  font-size: 12px;
+  font-weight: 700;
+  color: $red;
+  &.credit { color: $green; }
+}
+
+// ── Transaction helpers ───────────────────────────────────────────────────────
+.sp-cat-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  background: #f1f5f9;
+  color: $muted;
+  text-transform: capitalize;
+}
+
+.sp-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  mat-icon { font-size: 13px; width: 13px; height: 13px; }
+  &.credit { color: $green; }
+  &.debit  { color: $red; }
+}
+
+.sp-amount {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  &.credit { color: $green; }
+  &.debit  { color: $text; }
+}
+
+// ── Status badges ─────────────────────────────────────────────────────────────
+.sp-status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-blue   { background: rgba($accent, .12); color: $accent; }
+.badge-amber  { background: rgba($amber, .15);  color: #92400e; }
+.badge-green  { background: rgba($green, .12);  color: #065f46; }
+.badge-red    { background: rgba($red, .12);    color: $red; }
+.badge-purple { background: rgba($purple, .12); color: $purple; }
+
+// ── Inline badges ─────────────────────────────────────────────────────────────
+.sp-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  &-warn { background: rgba($amber, .15); color: #92400e; }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+.sp-empty {
+  text-align: center;
+  padding: 56px 16px !important;
+  color: $muted;
+
+  mat-icon {
+    display: block;
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 10px;
+    opacity: .35;
+  }
+
+  p { margin: 0; font-size: 14px; }
+}

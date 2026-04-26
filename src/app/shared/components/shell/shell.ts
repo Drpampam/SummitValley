@@ -34,6 +34,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/profile':       'Profile',
   '/admin':         'Admin Console',
   '/manager':       'My Clients',
+  '/support':       'Support Console',
 };
 
 interface NavItem { path: string; icon: string; label: string; }
@@ -98,6 +99,10 @@ export class ShellComponent implements OnInit, OnDestroy {
       { path: '/manager', icon: 'group',                label: 'My Clients' },
       { path: '/profile', icon: 'manage_accounts',      label: 'Profile' },
     ];
+    if (role === 'customer_service') return [
+      { path: '/support', icon: 'support_agent',        label: 'Support Console' },
+      { path: '/profile', icon: 'manage_accounts',      label: 'Profile' },
+    ];
     return [
       { path: '/dashboard',     icon: 'grid_view',             label: 'Dashboard' },
       { path: '/transactions',  icon: 'receipt_long',          label: 'Transactions' },
@@ -144,6 +149,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     const role = this.auth.user()?.role;
     if (role === 'admin') return 'Super Admin';
     if (role === 'account_manager') return 'Account Manager';
+    if (role === 'customer_service') return 'Customer Service';
     return 'Customer';
   }
 
@@ -151,6 +157,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     const role = this.auth.user()?.role;
     if (role === 'admin') return 'verified_user';
     if (role === 'account_manager') return 'badge';
+    if (role === 'customer_service') return 'support_agent';
     return 'person';
   }
 

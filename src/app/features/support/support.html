@@ -1,0 +1,385 @@
+<div class="sp-page">
+
+  <!-- ══ Header ══════════════════════════════════════════════════════════════ -->
+  <div class="sp-header">
+    <div class="sp-header-left">
+      <div class="sp-agent-chip">
+        <mat-icon>support_agent</mat-icon>
+      </div>
+      <div>
+        <h1 class="sp-title">Support Console</h1>
+        <p class="sp-sub">{{ agent()?.firstName }} {{ agent()?.lastName }} &nbsp;·&nbsp; Customer Service Agent</p>
+      </div>
+    </div>
+
+    <div class="sp-kpi-row">
+      <div class="sp-kpi">
+        <span class="sp-kpi-val">{{ stats().customers }}</span>
+        <span class="sp-kpi-lbl">Customers</span>
+      </div>
+      <div class="sp-kpi sp-kpi-warn">
+        <span class="sp-kpi-val">{{ stats().openDisputes }}</span>
+        <span class="sp-kpi-lbl">Open Disputes</span>
+      </div>
+      <div class="sp-kpi sp-kpi-ok">
+        <span class="sp-kpi-val">{{ stats().resolvedToday }}</span>
+        <span class="sp-kpi-lbl">Resolved Today</span>
+      </div>
+      <div class="sp-kpi">
+        <span class="sp-kpi-val">{{ stats().totalDisputes }}</span>
+        <span class="sp-kpi-lbl">Total Disputes</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Tab Bar ══════════════════════════════════════════════════════════════ -->
+  <div class="sp-tabs">
+    <button class="sp-tab" [class.sp-tab-active]="activeTab() === 'customers'" (click)="activeTab.set('customers')">
+      <mat-icon>people</mat-icon>
+      <span>Customers</span>
+      <span class="sp-tab-count">{{ customers().length }}</span>
+    </button>
+    <button class="sp-tab" [class.sp-tab-active]="activeTab() === 'disputes'" (click)="activeTab.set('disputes')">
+      <mat-icon>gavel</mat-icon>
+      <span>Disputes</span>
+      @if (stats().openDisputes > 0) {
+        <span class="sp-tab-count sp-tab-count-warn">{{ stats().openDisputes }}</span>
+      } @else {
+        <span class="sp-tab-count">{{ stats().totalDisputes }}</span>
+      }
+    </button>
+    <button class="sp-tab" [class.sp-tab-active]="activeTab() === 'transactions'" (click)="activeTab.set('transactions')">
+      <mat-icon>receipt_long</mat-icon>
+      <span>Transactions</span>
+    </button>
+  </div>
+
+  <!-- ══ CUSTOMERS ════════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'customers') {
+    <div class="sp-panel">
+
+      <!-- Toolbar -->
+      <div class="sp-toolbar">
+        <div class="sp-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="text"
+            placeholder="Search by name, email or location…"
+            [value]="customerSearch()"
+            (input)="customerSearch.set($any($event.target).value)"
+          />
+          @if (customerSearch()) {
+            <button class="sp-clear" (click)="customerSearch.set('')">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </div>
+        <span class="sp-count">{{ filteredCustomers().length }} of {{ customers().length }}</span>
+      </div>
+
+      <!-- Table -->
+      <div class="sp-scroll">
+        <table class="sp-table">
+          <thead>
+            <tr>
+              <th style="width:36px"></th>
+              <th>Customer</th>
+              <th>Contact</th>
+              <th>Location</th>
+              <th>Accounts</th>
+              <th>Total Balance</th>
+              <th>Member Since</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of filteredCustomers(); track c.id) {
+              <tr class="sp-row" [class.sp-row-expanded]="expandedRow() === c.id" (click)="toggleRow(c.id)">
+                <td>
+                  <mat-icon class="sp-chevron">
+                    {{ expandedRow() === c.id ? 'expand_less' : 'expand_more' }}
+                  </mat-icon>
+                </td>
+                <td>
+                  <div class="sp-customer">
+                    <div class="sp-avatar">{{ initials(c) }}</div>
+                    <div>
+                      <p class="sp-name">{{ c.firstName }} {{ c.lastName }}</p>
+                      @if (c.mustChangePassword) {
+                        <span class="sp-badge sp-badge-warn">Temp Password</span>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td class="sp-muted">{{ c.email }}</td>
+                <td>
+                  <span class="sp-flag">{{ flagEmoji(c.country) }}</span>
+                  {{ c.city || c.country }}
+                </td>
+                <td>
+                  <div class="sp-acc-pills">
+                    @for (acc of accountsFor(c.id); track acc.id) {
+                      <span class="sp-pill">
+                        {{ acc.type === 'checking' ? 'Chk' : 'Sav' }} {{ acc.accountNumber }}
+                      </span>
+                    }
+                    @if (accountsFor(c.id).length === 0) { <span class="sp-muted">—</span> }
+                  </div>
+                </td>
+                <td><strong class="sp-bal">{{ fmt(totalBalance(c.id), primaryCurrency(c.id)) }}</strong></td>
+                <td class="sp-muted">{{ fmtDate(c.createdAt) }}</td>
+                <td>
+                  <button
+                    class="sp-action-btn sp-btn-reset"
+                    [disabled]="resettingPwd() === c.id"
+                    (click)="$event.stopPropagation(); resetPassword(c)"
+                    matTooltip="Send password reset email to customer"
+                  >
+                    <mat-icon>lock_reset</mat-icon>
+                    Reset Password
+                  </button>
+                </td>
+              </tr>
+
+              <!-- Expanded detail row -->
+              @if (expandedRow() === c.id) {
+                <tr class="sp-detail-row">
+                  <td colspan="8">
+                    <div class="sp-detail">
+                      <div class="sp-detail-section">
+                        <p class="sp-detail-heading">Profile</p>
+                        <div class="sp-detail-grid">
+                          <div><span class="sp-dl">Phone</span><span>{{ c.phone || '—' }}</span></div>
+                          <div><span class="sp-dl">Address</span><span>{{ c.address || '—' }}, {{ c.city }}</span></div>
+                          <div><span class="sp-dl">Postcode</span><span>{{ c.zip || '—' }}</span></div>
+                          <div><span class="sp-dl">Locale</span><span>{{ c.locale }}</span></div>
+                        </div>
+                      </div>
+                      <div class="sp-detail-section">
+                        <p class="sp-detail-heading">Accounts</p>
+                        <div class="sp-acc-detail-list">
+                          @for (acc of accountsFor(c.id); track acc.id) {
+                            <div class="sp-acc-card">
+                              <div class="sp-acc-type">
+                                <mat-icon>{{ acc.type === 'checking' ? 'account_balance_wallet' : 'savings' }}</mat-icon>
+                                {{ acc.type === 'checking' ? 'Checking' : 'Savings' }}
+                              </div>
+                              <p class="sp-acc-num">{{ acc.accountNumber }}</p>
+                              <p class="sp-acc-bal">{{ fmt(acc.balance, acc.currency) }}</p>
+                              <p class="sp-acc-avail">Available: {{ fmt(acc.availableBalance, acc.currency) }}</p>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+
+            @if (filteredCustomers().length === 0) {
+              <tr>
+                <td colspan="8" class="sp-empty">
+                  <mat-icon>person_search</mat-icon>
+                  <p>No customers match "{{ customerSearch() }}"</p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- ══ DISPUTES ═════════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'disputes') {
+    <div class="sp-panel">
+
+      <!-- Toolbar with filter pills -->
+      <div class="sp-toolbar">
+        <div class="sp-filter-pills">
+          @for (f of [
+            { val: 'all', label: 'All', count: disputeCounts().all },
+            { val: 'submitted', label: 'Submitted', count: disputeCounts().submitted },
+            { val: 'under_review', label: 'Under Review', count: disputeCounts().under_review },
+            { val: 'resolved', label: 'Resolved', count: disputeCounts().resolved },
+            { val: 'rejected', label: 'Rejected', count: disputeCounts().rejected }
+          ]; track f.val) {
+            <button
+              class="sp-filter-pill"
+              [class.active]="disputeFilter() === f.val"
+              (click)="disputeFilter.set($any(f.val))"
+            >
+              {{ f.label }}
+              <span class="sp-pill-num">{{ f.count }}</span>
+            </button>
+          }
+        </div>
+        <span class="sp-count">{{ filteredDisputes().length }} dispute{{ filteredDisputes().length !== 1 ? 's' : '' }}</span>
+      </div>
+
+      <!-- Table -->
+      <div class="sp-scroll">
+        <table class="sp-table">
+          <thead>
+            <tr>
+              <th>Case #</th>
+              <th>Customer</th>
+              <th>Reason</th>
+              <th>Related Transaction</th>
+              <th>Description</th>
+              <th>Submitted</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of filteredDisputes(); track d.id) {
+              <tr class="sp-row">
+                <td><span class="sp-mono">{{ d.caseNumber }}</span></td>
+                <td>
+                  <div class="sp-customer">
+                    <div class="sp-avatar sp-avatar-sm">{{ initials(getUserById(d.userId)!) }}</div>
+                    <span>{{ getUserName(d.userId) }}</span>
+                  </div>
+                </td>
+                <td><span class="sp-reason-tag">{{ reasonLabel(d.reason) }}</span></td>
+                <td>
+                  @if (getDisputeTransaction(d.transactionId); as txn) {
+                    <div class="sp-txn-ref">
+                      <span class="sp-mono">{{ txn.description }}</span>
+                      <span class="sp-txn-amt" [class.credit]="txn.type === 'credit'">
+                        {{ txn.type === 'credit' ? '+' : '-' }}{{ fmt(txn.amount) }}
+                      </span>
+                    </div>
+                  } @else {
+                    <span class="sp-muted">{{ d.transactionId }}</span>
+                  }
+                </td>
+                <td>
+                  <span class="sp-desc" [title]="d.description">{{ d.description }}</span>
+                </td>
+                <td class="sp-muted">{{ fmtDate(d.submittedAt) }}</td>
+                <td>
+                  <span class="sp-status-badge {{ statusClass(d.status) }}">
+                    {{ statusLabel(d.status) }}
+                  </span>
+                </td>
+                <td>
+                  <div class="sp-actions">
+                    @if (d.status === 'submitted') {
+                      <button class="sp-action-btn sp-btn-blue" (click)="updateStatus(d, 'under_review')" matTooltip="Begin review">
+                        <mat-icon>visibility</mat-icon> Review
+                      </button>
+                    }
+                    @if (d.status === 'submitted' || d.status === 'under_review') {
+                      <button class="sp-action-btn sp-btn-green" (click)="updateStatus(d, 'resolved')" matTooltip="Mark as resolved">
+                        <mat-icon>check_circle</mat-icon> Resolve
+                      </button>
+                      <button class="sp-action-btn sp-btn-red" (click)="updateStatus(d, 'rejected')" matTooltip="Reject dispute">
+                        <mat-icon>cancel</mat-icon> Reject
+                      </button>
+                    }
+                    @if (d.status === 'resolved' || d.status === 'rejected') {
+                      <span class="sp-closed">
+                        <mat-icon>lock</mat-icon>
+                        Closed {{ fmtDate(d.resolvedAt ?? '') }}
+                      </span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+
+            @if (filteredDisputes().length === 0) {
+              <tr>
+                <td colspan="8" class="sp-empty">
+                  <mat-icon>gavel</mat-icon>
+                  <p>No disputes with status "{{ statusLabel(disputeFilter()) }}"</p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- ══ TRANSACTIONS ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'transactions') {
+    <div class="sp-panel">
+
+      <!-- Toolbar -->
+      <div class="sp-toolbar">
+        <div class="sp-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="text"
+            placeholder="Search description, reference, account ID…"
+            [value]="txnSearch()"
+            (input)="txnSearch.set($any($event.target).value)"
+          />
+          @if (txnSearch()) {
+            <button class="sp-clear" (click)="txnSearch.set('')">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </div>
+        <span class="sp-count">{{ filteredTransactions().length }} result{{ filteredTransactions().length !== 1 ? 's' : '' }}</span>
+      </div>
+
+      <!-- Table -->
+      <div class="sp-scroll">
+        <table class="sp-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Account</th>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of filteredTransactions(); track t.id) {
+              <tr class="sp-row">
+                <td class="sp-muted">{{ fmtDate(t.date) }}</td>
+                <td>{{ getAccountOwner(t.accountId) }}</td>
+                <td><span class="sp-mono">{{ t.accountId }}</span></td>
+                <td>{{ t.description }}</td>
+                <td><span class="sp-cat-tag">{{ t.category }}</span></td>
+                <td>
+                  <span class="sp-type {{ t.type }}">
+                    <mat-icon>{{ t.type === 'credit' ? 'south_west' : 'north_east' }}</mat-icon>
+                    {{ t.type }}
+                  </span>
+                </td>
+                <td class="sp-amount {{ t.type }}">
+                  {{ t.type === 'credit' ? '+' : '−' }}{{ fmt(t.amount) }}
+                </td>
+                <td>
+                  <span class="sp-status-badge {{ statusClass(t.status) }}">{{ statusLabel(t.status) }}</span>
+                </td>
+                <td class="sp-mono sp-muted">{{ t.reference ?? '—' }}</td>
+              </tr>
+            }
+
+            @if (filteredTransactions().length === 0) {
+              <tr>
+                <td colspan="9" class="sp-empty">
+                  <mat-icon>receipt_long</mat-icon>
+                  <p>No transactions match your search</p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+</div>

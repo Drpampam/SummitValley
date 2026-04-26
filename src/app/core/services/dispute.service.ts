@@ -23,9 +23,20 @@ export class DisputeService {
     return this._all().filter(d => d.userId === user.id);
   });
 
+  readonly allDisputes = computed<Dispute[]>(() => this._all());
+
   readonly disputedTransactionIds = computed(() =>
     new Set(this.myDisputes().map(d => d.transactionId))
   );
+
+  updateDisputeStatus(id: string, status: Dispute['status']): void {
+    this._all.update(list =>
+      list.map(d => d.id === id
+        ? { ...d, status, resolvedAt: (status === 'resolved' || status === 'rejected') ? new Date().toISOString() : d.resolvedAt }
+        : d
+      )
+    );
+  }
 
   submit(transactionId: string, reason: DisputeReason, description: string): Observable<Dispute> {
     const user = this.auth.user();

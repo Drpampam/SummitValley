@@ -18,6 +18,8 @@ export const MOCK_CREDENTIALS: Record<string, string> = {
   'svb-rachel-kim@mailinator.com':      'Rachel@1234',
   'sharonleechen92@gmail.com':          'Temp@Sharon1',
   'dakaristeinigzx@hotmail.com':        'Temp@Dakari1',
+  'cs-charlotte-davies@summitvalleybank.com': 'CS@Charlotte1',
+  'cs-michael-torres@summitvalleybank.com':   'CS@Michael1',
 };
 
 // ── Users ──────────────────────────────────────────────────────────────────────
@@ -130,6 +132,38 @@ export const MOCK_USERS: User[] = [
     role: 'user',
     mustChangePassword: true,
     createdAt: '2024-04-22T00:00:00Z',
+  },
+
+  // ── Customer Service Agents ────────────────────────────────────────────────
+  {
+    id: 'cs-001',
+    firstName: 'Charlotte',
+    lastName: 'Davies',
+    email: 'cs-charlotte-davies@summitvalleybank.com',
+    phone: '+44 20 7946 0312',
+    address: '14 Threadneedle Street',
+    city: 'London',
+    state: 'Greater London',
+    zip: 'EC2R 8AY',
+    country: 'GB',
+    locale: 'en-GB',
+    role: 'customer_service',
+    createdAt: '2024-01-10T00:00:00Z',
+  },
+  {
+    id: 'cs-002',
+    firstName: 'Michael',
+    lastName: 'Torres',
+    email: 'cs-michael-torres@summitvalleybank.com',
+    phone: '+1 312 445 8920',
+    address: '233 S Wacker Drive',
+    city: 'Chicago',
+    state: 'IL',
+    zip: '60606',
+    country: 'US',
+    locale: 'en-US',
+    role: 'customer_service',
+    createdAt: '2024-01-10T00:00:00Z',
   },
 ];
 

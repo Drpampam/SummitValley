@@ -73,7 +73,7 @@ export class TransactionService {
   readonly transactions = computed<Transaction[]>(() => {
     const user = this.auth.user();
     if (!user) return [];
-    if (user.role === 'admin') return this._all();
+    if (user.role === 'admin' || user.role === 'customer_service') return this._all();
     const visibleIds = this.accSvc.accounts().map(a => a.id);
     return this._all().filter(t => visibleIds.includes(t.accountId));
   });

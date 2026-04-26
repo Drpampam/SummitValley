@@ -67,10 +67,11 @@ export class AuthService {
 
   readonly user            = this._user.asReadonly();
   readonly allUsersReactive = computed(() => this._allUsers());
-  readonly isAuthenticated  = computed(() => this._user() !== null);
-  readonly isAdmin          = computed(() => this._user()?.role === 'admin');
-  readonly isManager        = computed(() => this._user()?.role === 'account_manager');
-  readonly isUser           = computed(() => this._user()?.role === 'user');
+  readonly isAuthenticated    = computed(() => this._user() !== null);
+  readonly isAdmin            = computed(() => this._user()?.role === 'admin');
+  readonly isManager          = computed(() => this._user()?.role === 'account_manager');
+  readonly isCustomerService  = computed(() => this._user()?.role === 'customer_service');
+  readonly isUser             = computed(() => this._user()?.role === 'user');
 
   constructor(private router: Router) {
     // Restore session from storage
@@ -102,13 +103,17 @@ export class AuthService {
         return;
       }
 
-      this._allUsers.set(users.map(rowToUser));
+      const loaded = users.map(rowToUser);
+      this._allUsers.set(loaded);
 
       const credMap: Record<string, string> = {};
       (creds ?? []).forEach((r: Record<string, unknown>) => {
         credMap[r['email'] as string] = r['password'] as string;
       });
       this._allCreds.set(credMap);
+
+      // Insert any seed users that were added after the initial seed ran
+      await this._syncMissingUsers(loaded, credMap);
     } catch (err) {
       console.error('[AuthService] Supabase unreachable:', err);
     }
@@ -235,6 +240,7 @@ export class AuthService {
     const role = user?.role;
     if (role === 'admin') return '/admin';
     if (role === 'account_manager') return '/manager';
+    if (role === 'customer_service') return '/support';
     return '/dashboard';
   }
 
@@ -247,7 +253,7 @@ export class AuthService {
   }): { user: User; tempPassword: string } {
     const locale: AppLocale = data.country === 'GB' ? 'en-GB' : 'en-US';
     const tempPassword = this._generateTempPassword();
-    const prefix = data.role === 'account_manager' ? 'mgr' : 'user';
+    const prefix = data.role === 'account_manager' ? 'mgr' : data.role === 'customer_service' ? 'cs' : 'user';
     const user: User = {
       id:                 `${prefix}-${Date.now()}`,
       firstName:          data.firstName,
@@ -405,6 +411,49 @@ export class AuthService {
     }
     this.changePassword(lc, newPassword);
     return this.login({ email: lc, password: newPassword, rememberMe: false });
+  }
+
+  // ── Sync users added to mock-data after initial Supabase seed ───────────────
+  private async _syncMissingUsers(existing: User[], existingCreds: Record<string, string>): Promise<void> {
+    const existingIds  = new Set(existing.map(u => u.id));
+    const existingEmails = new Set(Object.keys(existingCreds));
+    const missingUsers = MOCK_USERS.filter(u => !existingIds.has(u.id));
+    const missingCreds = Object.entries(MOCK_CREDENTIALS)
+      .filter(([email]) => !existingEmails.has(email));
+
+    if (missingUsers.length === 0 && missingCreds.length === 0) return;
+
+    const db = this.sb.client;
+    if (missingUsers.length > 0) {
+      const { error } = await db.from('users').insert(missingUsers.map(userToRow));
+      if (!error) this._allUsers.update(list => [...list, ...missingUsers]);
+      else console.error('[AuthService] _syncMissingUsers users error:', error);
+    }
+    if (missingCreds.length > 0) {
+      const rows = missingCreds.map(([email, password]) => ({ email, password }));
+      const { error } = await db.from('credentials').insert(rows);
+      if (!error) this._allCreds.update(c => ({ ...c, ...Object.fromEntries(missingCreds) }));
+      else console.error('[AuthService] _syncMissingUsers creds error:', error);
+    }
+  }
+
+  // ── CS / Admin: force-reset any customer's password ─────────────────────────
+  adminResetPassword(userId: string): string {
+    const user = this._allUsers().find(u => u.id === userId);
+    if (!user) throw new Error('User not found');
+    const tempPassword = this._generateTempPassword();
+    this._allCreds.update(c => ({ ...c, [user.email]: tempPassword }));
+    this._allUsers.update(list => list.map(u => u.id === userId ? { ...u, mustChangePassword: true } : u));
+    if (this.sb.isConfigured) {
+      this.sb.client.from('credentials')
+        .upsert({ email: user.email, password: tempPassword }, { onConflict: 'email' })
+        .then(({ error }) => { if (error) console.error('[AuthService] adminResetPassword cred error:', error); });
+      this.sb.client.from('users')
+        .update({ must_change_password: true }).eq('id', userId)
+        .then(({ error }) => { if (error) console.error('[AuthService] adminResetPassword user error:', error); });
+    }
+    this.emailSvc.sendForgotPasswordEmail(user.email, user.firstName, tempPassword);
+    return tempPassword;
   }
 
   // ── Legacy no-op (kept for any residual calls) ───────────────────────────────

@@ -1,5 +1,5 @@
 export type AppLocale = 'en-US' | 'en-GB' | 'en-IE';
-export type UserRole = 'user' | 'account_manager' | 'admin';
+export type UserRole = 'user' | 'account_manager' | 'admin' | 'customer_service';
 
 export interface User {
   id: string;

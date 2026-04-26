@@ -63,7 +63,7 @@ export class AccountService {
   readonly accounts = computed<Account[]>(() => {
     const user = this.auth.user();
     if (!user) return [];
-    if (user.role === 'admin') return this._allAccounts();
+    if (user.role === 'admin' || user.role === 'customer_service') return this._allAccounts();
     if (user.role === 'account_manager') {
       const ids = user.managedUserIds ?? [];
       return this._allAccounts().filter(a => ids.includes(a.userId));
