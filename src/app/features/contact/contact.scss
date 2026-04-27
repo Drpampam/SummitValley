@@ -1,0 +1,335 @@
+$primary: #880000;
+$accent:  #cc0000;
+$green:   #10b981;
+$amber:   #f59e0b;
+$bg:      #f4f4f4;
+$surface: #ffffff;
+$border:  #e5e7eb;
+$text:    #111111;
+$muted:   #6b7280;
+
+.contact-page {
+  min-height: 100%;
+  background: $bg;
+  padding: 28px 24px;
+}
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+.contact-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ── Form column ───────────────────────────────────────────────────────────────
+.form-col { display: flex; flex-direction: column; gap: 20px; }
+
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, $primary, $accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba($accent, .35);
+  flex-shrink: 0;
+  mat-icon { font-size: 28px; width: 28px; height: 28px; }
+}
+
+.form-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: $text;
+}
+
+.form-sub {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: $muted;
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────────
+.form-card {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+
+// ── Fields ────────────────────────────────────────────────────────────────────
+.field-group {
+  margin-bottom: 18px;
+}
+
+.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: $text;
+  margin-bottom: 6px;
+}
+
+.req { color: $accent; }
+
+.full-width { width: 100%; }
+
+// ── Priority radio group ───────────────────────────────────────────────────────
+.priority-group {
+  display: flex;
+  gap: 10px;
+}
+
+.priority-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border: 1.5px solid $border;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: $muted;
+  background: #fafafa;
+  transition: all .15s;
+  user-select: none;
+
+  input[type="radio"] { display: none; }
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+  &.selected {
+    border-color: $accent;
+    background: rgba($accent, .05);
+    color: $accent;
+  }
+
+  &.urgent.selected {
+    border-color: $amber;
+    background: rgba($amber, .07);
+    color: #92400e;
+    mat-icon { color: $amber; }
+  }
+
+  &:hover:not(.selected) {
+    border-color: #d1d5db;
+    background: #f3f4f6;
+    color: $text;
+  }
+}
+
+// ── Submit button ─────────────────────────────────────────────────────────────
+.submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, $primary, $accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+  box-shadow: 0 4px 14px rgba($accent, .35);
+
+  mat-icon { font-size: 20px; width: 20px; height: 20px; }
+
+  &:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+  &:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+}
+
+.spin-wrap { display: flex; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+
+// ── Success card ──────────────────────────────────────────────────────────────
+.success-card {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 14px;
+  padding: 48px 36px;
+  text-align: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+
+.success-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba($green, .12);
+  border: 2px solid rgba($green, .3);
+  color: $green;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  mat-icon { font-size: 36px; width: 36px; height: 36px; }
+}
+
+.success-title {
+  margin: 0 0 12px;
+  font-size: 24px;
+  font-weight: 800;
+  color: $text;
+}
+
+.success-body {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: $muted;
+  line-height: 1.7;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.success-ref {
+  margin: 0 0 28px;
+  font-size: 13px;
+  color: $muted;
+  strong { font-family: monospace; color: $primary; font-size: 14px; }
+}
+
+.new-btn { max-width: 240px; margin: 0 auto; }
+
+// ── Info column ───────────────────────────────────────────────────────────────
+.info-col { display: flex; flex-direction: column; gap: 16px; }
+
+.info-card {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.05);
+}
+
+.info-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: $text;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; color: $accent; }
+}
+
+// ── Channels ──────────────────────────────────────────────────────────────────
+.channel-list { display: flex; flex-direction: column; gap: 14px; }
+
+.channel {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.channel-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+  &.email-icon { background: rgba($accent, .1); color: $accent; }
+  &.phone-icon { background: rgba($green, .1); color: $green; }
+}
+
+.channel-name {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: $text;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.channel-val {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: $primary;
+}
+
+.channel-note {
+  margin: 0;
+  font-size: 11px;
+  color: $muted;
+}
+
+// ── SLA ───────────────────────────────────────────────────────────────────────
+.sla-rows { display: flex; flex-direction: column; gap: 10px; }
+
+.sla-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: $muted;
+}
+
+.sla-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.normal { background: rgba(#1976d2, .1); color: #1976d2; }
+  &.urgent { background: rgba($amber, .15);  color: #92400e; }
+}
+
+// ── Security ──────────────────────────────────────────────────────────────────
+.sec-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.sec-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  color: $green;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sec-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: $text;
+}
+
+.sec-body {
+  margin: 0;
+  font-size: 12px;
+  color: $muted;
+  line-height: 1.5;
+}

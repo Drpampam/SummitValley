@@ -1,7 +1,8 @@
 const { Resend } = require('resend');
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'notifications@summitvalleybank.com';
-const FROM_NAME  = process.env.FROM_NAME  || 'Summit Valley Bank';
+const FROM_EMAIL    = process.env.FROM_EMAIL    || 'notifications@summitvalleybank.com';
+const FROM_NAME     = process.env.FROM_NAME     || 'Summit Valley Bank';
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@summitvalleybank.com';
 
 // In production the Angular app calls /api/email/send on the same Vercel domain
 // (same-origin — no CORS headers needed). The headers below only matter for
@@ -40,6 +41,21 @@ module.exports = async (req, res) => {
       html:    template.html,
     });
     console.log(`[Email] ${type} → ${to} | id: ${result.data?.id}`);
+
+    // For contact requests: also fire a support-team notification
+    if (type === 'contact_request' && SUPPORT_EMAIL !== to) {
+      const supportTpl = buildTemplate('contact_support_notify', name, { ...data, customerEmail: to });
+      if (supportTpl) {
+        resend.emails.send({
+          from:     `${FROM_NAME} <${FROM_EMAIL}>`,
+          to:       [SUPPORT_EMAIL],
+          subject:  supportTpl.subject,
+          html:     supportTpl.html,
+          reply_to: to,
+        }).catch(e => console.warn('[Email] support notify failed:', e.message));
+      }
+    }
+
     return res.json({ success: true, id: result.data?.id });
   } catch (err) {
     console.error(`[Email] Failed: ${err.message}`);
@@ -59,7 +75,9 @@ function buildTemplate(type, name, data) {
     case 'bill_payment':     return billPaymentTemplate(name, data);
     case 'welcome':          return welcomeTemplate(name, data);
     case 'forgot_password':  return forgotPasswordTemplate(name, data);
-    case 'transfer_otp':     return transferOtpTemplate(name, data);
+    case 'transfer_otp':          return transferOtpTemplate(name, data);
+    case 'contact_request':       return contactConfirmTemplate(name, data);
+    case 'contact_support_notify': return contactSupportTemplate(name, data);
     default: return null;
   }
 }
@@ -336,5 +354,94 @@ function transferOtpTemplate(name, data) {
   return {
     subject: `Your Summit Valley Bank transfer verification code: ${code}`,
     html: base(`Your verification code is ${code} — expires in 5 minutes`, body),
+  };
+}
+
+// ── Contact Us — Customer Confirmation ───────────────────────────────────────
+function contactConfirmTemplate(name, { category, subject, priority, message, date } = {}) {
+  const fmtDate = date ? new Date(date).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }) : 'Just now';
+  const isUrgent = (priority || '').toLowerCase() === 'urgent';
+  const ref = 'SVB-' + Date.now().toString(36).toUpperCase();
+
+  const body = `
+    ${greeting(name)}
+    <p style="margin:0 0 20px;font-size:14px;color:#555555;line-height:1.6;">
+      Thank you for contacting Summit Valley Bank. We've received your message and a member of our support team will be in touch shortly.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;border:1px solid #eeeeee;border-radius:12px;overflow:hidden;margin:0 0 20px;">
+      <tr><td style="padding:16px 20px;border-bottom:1px solid #f0f0f0;">
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td>
+            <p style="margin:0 0 2px;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:.5px;font-weight:600;">Subject</p>
+            <p style="margin:0;font-size:15px;font-weight:700;color:#111111;">${subject || '—'}</p>
+          </td>
+          <td align="right">
+            ${isUrgent
+              ? badge('URGENT', '#fff7ed', '#c2410c')
+              : badge('NORMAL', '#eff6ff', '#1d4ed8')}
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 10px;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:.5px;font-weight:600;">Your Message</p>
+        <p style="margin:0;font-size:13px;color:#444444;line-height:1.7;white-space:pre-wrap;">${message || ''}</p>
+      </td></tr>
+    </table>
+
+    ${detailTable(
+      infoRow('Category',        category || '—') +
+      infoRow('Priority',        isUrgent ? '<span style="color:#c2410c;font-weight:700;">Urgent</span>' : 'Normal') +
+      infoRow('Submitted',       fmtDate) +
+      infoRow('Case Reference',  `<code style="font-family:monospace;font-size:13px;font-weight:700;color:#880000;">${ref}</code>`)
+    )}
+
+    ${alertBox('⏱️',
+      isUrgent
+        ? '<strong>Urgent request received.</strong> Our team will respond within <strong>4 business hours</strong>.'
+        : 'Our support team typically responds within <strong>1–2 business days</strong>. Keep this email for your records.',
+      '#fffbeb', '#FEF08A'
+    )}
+  `;
+  return {
+    subject: `We received your message — Case ${ref}`,
+    html: base(`Your support request has been received. Case ref: ${ref}`, body),
+  };
+}
+
+// ── Contact Us — Internal Support Notification ───────────────────────────────
+function contactSupportTemplate(name, { category, subject, priority, message, date, customerEmail } = {}) {
+  const fmtDate = date ? new Date(date).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }) : 'Just now';
+  const isUrgent = (priority || '').toLowerCase() === 'urgent';
+
+  const body = `
+    <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#111111;">
+      ${isUrgent ? '🚨' : '📩'} New Support Request
+    </p>
+    <p style="margin:0 0 20px;font-size:14px;color:#555555;line-height:1.6;">
+      A customer has submitted a contact request via the Summit Valley Bank portal.
+    </p>
+
+    ${detailTable(
+      infoRow('From',      `${name} &lt;${customerEmail || '—'}&gt;`) +
+      infoRow('Category',  category || '—') +
+      infoRow('Subject',   `<strong>${subject || '—'}</strong>`) +
+      infoRow('Priority',  isUrgent ? '<span style="color:#c2410c;font-weight:700;">⚠ URGENT</span>' : 'Normal') +
+      infoRow('Submitted', fmtDate)
+    )}
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;border:1px solid #eeeeee;border-radius:10px;margin:20px 0;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 8px;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:.5px;font-weight:600;">Customer Message</p>
+        <p style="margin:0;font-size:14px;color:#333333;line-height:1.7;white-space:pre-wrap;">${message || ''}</p>
+      </td></tr>
+    </table>
+
+    ${isUrgent ? alertBox('⚠️', '<strong>This request is marked URGENT.</strong> Please respond within 4 business hours.', '#fff7ed', '#fed7aa') : ''}
+    ${alertBox('↩️', `Reply directly to this email to respond to <strong>${name}</strong> at ${customerEmail || '—'}.`, '#f0f9ff', '#bae6fd')}
+  `;
+  return {
+    subject: `[${isUrgent ? 'URGENT' : 'Support'}] ${subject || 'New contact request'} — ${name}`,
+    html: base(`New support request from ${name}`, body),
   };
 }

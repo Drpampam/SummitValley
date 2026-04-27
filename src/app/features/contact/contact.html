@@ -1,0 +1,193 @@
+<div class="contact-page">
+  <div class="contact-layout">
+
+    <!-- ── Left: Form ──────────────────────────────────────────────────── -->
+    <div class="form-col">
+
+      @if (!submitted()) {
+
+        <!-- Header -->
+        <div class="form-header">
+          <div class="header-icon">
+            <mat-icon>headset_mic</mat-icon>
+          </div>
+          <div>
+            <h1 class="form-title">Contact Support</h1>
+            <p class="form-sub">We typically respond within 1–2 business days.</p>
+          </div>
+        </div>
+
+        <!-- Form card -->
+        <div class="form-card">
+          <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+            <!-- Category -->
+            <div class="field-group">
+              <label class="field-label">Category <span class="req">*</span></label>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-select formControlName="category" placeholder="Select a category">
+                  @for (c of categories; track c.value) {
+                    <mat-option [value]="c.value">{{ c.label }}</mat-option>
+                  }
+                </mat-select>
+                @if (form.get('category')?.invalid && form.get('category')?.touched) {
+                  <mat-error>Please select a category</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            <!-- Subject -->
+            <div class="field-group">
+              <label class="field-label">Subject <span class="req">*</span></label>
+              <mat-form-field appearance="outline" class="full-width">
+                <input matInput formControlName="subject" placeholder="Brief description of your issue" />
+                @if (form.get('subject')?.errors?.['required'] && form.get('subject')?.touched) {
+                  <mat-error>Subject is required</mat-error>
+                }
+                @if (form.get('subject')?.errors?.['minlength'] && form.get('subject')?.touched) {
+                  <mat-error>Subject must be at least 5 characters</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            <!-- Priority -->
+            <div class="field-group">
+              <label class="field-label">Priority</label>
+              <div class="priority-group">
+                <label class="priority-option" [class.selected]="form.get('priority')?.value === 'normal'">
+                  <input type="radio" formControlName="priority" value="normal" />
+                  <mat-icon>radio_button_checked</mat-icon>
+                  Normal
+                </label>
+                <label class="priority-option urgent" [class.selected]="form.get('priority')?.value === 'urgent'">
+                  <input type="radio" formControlName="priority" value="urgent" />
+                  <mat-icon>priority_high</mat-icon>
+                  Urgent
+                </label>
+              </div>
+            </div>
+
+            <!-- Message -->
+            <div class="field-group">
+              <label class="field-label">Message <span class="req">*</span></label>
+              <mat-form-field appearance="outline" class="full-width">
+                <textarea
+                  matInput
+                  formControlName="message"
+                  rows="6"
+                  placeholder="Please describe your issue in detail. Include any relevant account numbers, transaction references, or dates."
+                ></textarea>
+                <mat-hint align="end">{{ messageLen }} / 2000</mat-hint>
+                @if (form.get('message')?.errors?.['required'] && form.get('message')?.touched) {
+                  <mat-error>Message is required</mat-error>
+                }
+                @if (form.get('message')?.errors?.['minlength'] && form.get('message')?.touched) {
+                  <mat-error>Please provide more detail (at least 20 characters)</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            <button class="submit-btn" type="submit" [disabled]="loading()">
+              @if (loading()) {
+                <span class="spin-wrap"><mat-icon class="spin">sync</mat-icon></span>
+                Sending…
+              } @else {
+                <mat-icon>send</mat-icon>
+                Send Message
+              }
+            </button>
+
+          </form>
+        </div>
+
+      } @else {
+
+        <!-- ── Success state ──────────────────────────────────────── -->
+        <div class="success-card">
+          <div class="success-icon">
+            <mat-icon>mark_email_read</mat-icon>
+          </div>
+          <h2 class="success-title">Message Sent!</h2>
+          <p class="success-body">
+            Thank you for reaching out. We've received your message and sent a confirmation
+            to your email. Our support team will respond within <strong>1–2 business days</strong>.
+          </p>
+          <p class="success-ref">
+            Reference: <strong>SVB-{{ (form.get('category')?.value ?? 'GEN') | uppercase }}-{{ ('' + (1000000 + (messageLen * 37))) }}</strong>
+          </p>
+          <button class="submit-btn new-btn" (click)="reset()">
+            <mat-icon>add</mat-icon>
+            Send Another Message
+          </button>
+        </div>
+
+      }
+    </div>
+
+    <!-- ── Right: Info Panel ──────────────────────────────────────── -->
+    <div class="info-col">
+
+      <!-- Contact channels -->
+      <div class="info-card">
+        <h3 class="info-title">
+          <mat-icon>support</mat-icon>
+          Support Channels
+        </h3>
+        <div class="channel-list">
+          <div class="channel">
+            <div class="channel-icon email-icon"><mat-icon>email</mat-icon></div>
+            <div>
+              <p class="channel-name">Email</p>
+              <p class="channel-val">support&#64;summitvalleybank.com</p>
+              <p class="channel-note">1–2 business days</p>
+            </div>
+          </div>
+          <div class="channel">
+            <div class="channel-icon phone-icon"><mat-icon>phone</mat-icon></div>
+            <div>
+              <p class="channel-name">Phone (US)</p>
+              <p class="channel-val">+1 800 427 5193</p>
+              <p class="channel-note">Mon–Fri, 8am–6pm ET</p>
+            </div>
+          </div>
+          <div class="channel">
+            <div class="channel-icon phone-icon"><mat-icon>phone</mat-icon></div>
+            <div>
+              <p class="channel-name">Phone (UK)</p>
+              <p class="channel-val">+44 800 012 4321</p>
+              <p class="channel-note">Mon–Fri, 9am–5pm GMT</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLA info -->
+      <div class="info-card sla-card">
+        <h3 class="info-title">
+          <mat-icon>schedule</mat-icon>
+          Response Times
+        </h3>
+        <div class="sla-rows">
+          <div class="sla-row">
+            <span class="sla-badge normal">Normal</span>
+            <span>1–2 business days</span>
+          </div>
+          <div class="sla-row">
+            <span class="sla-badge urgent">Urgent</span>
+            <span>Within 4 business hours</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security note -->
+      <div class="info-card sec-card">
+        <mat-icon class="sec-icon">shield</mat-icon>
+        <div>
+          <p class="sec-title">Your data is safe</p>
+          <p class="sec-body">Never share your password or full card number. Our agents will never ask for these.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

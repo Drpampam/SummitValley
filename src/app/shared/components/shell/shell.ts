@@ -35,6 +35,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin':         'Admin Console',
   '/manager':       'My Clients',
   '/support':       'Support Console',
+  '/contact-us':    'Contact Us',
 };
 
 interface NavItem { path: string; icon: string; label: string; }
@@ -115,6 +116,7 @@ export class ShellComponent implements OnInit, OnDestroy {
       { path: '/beneficiaries', icon: 'people',                label: 'Beneficiaries' },
       { path: '/disputes',      icon: 'gavel',                 label: 'Disputes' },
       { path: '/alerts',        icon: 'notifications_active',  label: 'Alerts' },
+      { path: '/contact-us',    icon: 'headset_mic',           label: 'Contact Us' },
       { path: '/profile',       icon: 'manage_accounts',       label: 'Profile' },
     ];
   });

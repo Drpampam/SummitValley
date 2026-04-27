@@ -147,6 +147,26 @@ export class EmailService {
     });
   }
 
+  // ── Contact Us ────────────────────────────────────────────────────────────
+  sendContactRequest(
+    to: string,
+    name: string,
+    opts: { category: string; subject: string; priority: string; message: string }
+  ): void {
+    this.send({
+      type: 'contact_request',
+      to,
+      name,
+      data: {
+        category: opts.category,
+        subject:  opts.subject,
+        priority: opts.priority,
+        message:  opts.message,
+        date:     new Date().toISOString(),
+      },
+    });
+  }
+
   // ── Bill payment confirmation ──────────────────────────────────────────────
   sendBillPayConfirmation(
     to: string,

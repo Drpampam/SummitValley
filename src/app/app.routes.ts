@@ -37,6 +37,7 @@ export const routes: Routes = [
       { path: 'beneficiaries', loadComponent: () => import('./features/beneficiaries/beneficiaries').then(m => m.BeneficiariesComponent) },
       { path: 'disputes',      loadComponent: () => import('./features/disputes/disputes').then(m => m.DisputesComponent) },
       { path: 'alerts',        loadComponent: () => import('./features/alerts/alerts').then(m => m.AlertsComponent) },
+      { path: 'contact-us',    loadComponent: () => import('./features/contact/contact').then(m => m.ContactComponent) },
 
       // Admin console
       { path: 'admin',           canActivate: [adminGuard],   loadComponent: () => import('./features/admin/admin').then(m => m.AdminComponent) },
