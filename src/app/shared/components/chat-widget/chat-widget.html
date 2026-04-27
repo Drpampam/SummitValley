@@ -134,6 +134,34 @@
         </div>
       }
 
+      <!-- Contact info (guest step) -->
+      @if (step() === 'contact_info') {
+        <div class="contact-info-form">
+          <input
+            class="contact-input"
+            type="text"
+            placeholder="Your full name"
+            [value]="guestName()"
+            (input)="onGuestNameInput($event)"
+          />
+          <input
+            class="contact-input"
+            type="email"
+            placeholder="Your email address"
+            [value]="guestEmail()"
+            (input)="onGuestEmailInput($event)"
+          />
+          <button
+            class="send-btn contact-continue-btn"
+            [disabled]="!guestName().trim() || !guestEmail().includes('@')"
+            (click)="submitContactInfo()"
+          >
+            <mat-icon>arrow_forward</mat-icon>
+            Continue
+          </button>
+        </div>
+      }
+
       <!-- Text input (message step) -->
       @if (step() === 'message') {
         <div class="text-input-wrap">

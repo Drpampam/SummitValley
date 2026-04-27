@@ -3,7 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../../core/services/auth.service';
 import { EmailService } from '../../../core/services/email.service';
 
-type ChatStep = 'greeting' | 'message' | 'priority' | 'submitting' | 'done';
+type ChatStep = 'greeting' | 'message' | 'contact_info' | 'priority' | 'submitting' | 'done';
 
 interface Msg { from: 'bot' | 'user'; text: string; }
 
@@ -20,15 +20,19 @@ export class ChatWidgetComponent {
 
   @ViewChild('msgList') private msgList!: ElementRef<HTMLElement>;
 
-  isOpen    = signal(false);
-  step      = signal<ChatStep>('greeting');
-  messages  = signal<Msg[]>([]);
-  isTyping  = signal(false);
-  inputText = signal('');
-  caseRef   = signal('');
+  isOpen     = signal(false);
+  step       = signal<ChatStep>('greeting');
+  messages   = signal<Msg[]>([]);
+  isTyping   = signal(false);
+  inputText  = signal('');
+  caseRef    = signal('');
+  guestName  = signal('');
+  guestEmail = signal('');
 
   private _topic    = '';
   private _message  = '';
+
+  readonly isGuest = () => !this.auth.isAuthenticated();
 
   readonly topics = [
     { label: 'Account Issue',    icon: 'account_balance_wallet' },
@@ -54,9 +58,12 @@ export class ChatWidgetComponent {
 
   private _start(): void {
     const name = this.auth.user()?.firstName ?? 'there';
+    const greeting = this.isGuest()
+      ? `👋 Hi there! I'm SVB Assistant — I'm here to help before you even log in.`
+      : `👋 Hi ${name}! I'm your SVB Assistant.`;
     setTimeout(() => {
-      this.messages.update(m => [...m, { from: 'bot', text: `👋 Hi ${name}! I'm your SVB Assistant.` }]);
-      this._botReply(`I'm here to help you with any questions or issues. Which topic best describes what you need?`, 900);
+      this.messages.update(m => [...m, { from: 'bot', text: greeting }]);
+      this._botReply(`I'm here to help with any questions or issues. Which topic best describes what you need?`, 900);
     }, 250);
   }
 
@@ -98,8 +105,32 @@ export class ChatWidgetComponent {
     this._message = text;
     this.messages.update(m => [...m, { from: 'user', text }]);
     this.inputText.set('');
+    this._scrollBottom();
+
+    if (this.isGuest()) {
+      this.step.set('contact_info');
+      this._botReply(`Thanks for the details! So I can follow up with you, could you share your name and email?`);
+    } else {
+      this.step.set('priority');
+      this._botReply(`Thanks for the details! One last thing — how urgent is this?`);
+    }
+  }
+
+  onGuestNameInput(e: Event): void {
+    this.guestName.set((e.target as HTMLInputElement).value);
+  }
+
+  onGuestEmailInput(e: Event): void {
+    this.guestEmail.set((e.target as HTMLInputElement).value);
+  }
+
+  submitContactInfo(): void {
+    const name  = this.guestName().trim();
+    const email = this.guestEmail().trim();
+    if (!name || !email || !email.includes('@')) return;
+    this.messages.update(m => [...m, { from: 'user', text: `${name} · ${email}` }]);
     this.step.set('priority');
-    this._botReply(`Thanks for the details! One last thing — how urgent is this?`);
+    this._botReply(`Thanks, ${name.split(' ')[0]}! Last question — how urgent is this?`);
     this._scrollBottom();
   }
 
@@ -110,11 +141,13 @@ export class ChatWidgetComponent {
     this._botReply(`Sending your request to our support team now…`, 500);
     this._scrollBottom();
 
-    const user = this.auth.user()!;
+    const user  = this.auth.user();
+    const name  = user ? `${user.firstName} ${user.lastName}` : this.guestName();
+    const email = user?.email ?? this.guestEmail();
     const ref   = 'SVB-' + Date.now().toString(36).toUpperCase();
     this.caseRef.set(ref);
 
-    this.emailSvc.sendContactRequest(user.email, `${user.firstName} ${user.lastName}`, {
+    this.emailSvc.sendContactRequest(email, name, {
       category: this._topic,
       subject:  this._topic,
       priority,
@@ -137,9 +170,11 @@ export class ChatWidgetComponent {
     this.messages.set([]);
     this.step.set('greeting');
     this.inputText.set('');
-    this._topic   = '';
-    this._message = '';
+    this._topic      = '';
+    this._message    = '';
     this.caseRef.set('');
+    this.guestName.set('');
+    this.guestEmail.set('');
     this._start();
   }
 }

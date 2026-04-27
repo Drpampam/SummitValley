@@ -16,6 +16,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from '../../../core/services/auth.service';
+import { ChatWidgetComponent } from '../../../shared/components/chat-widget/chat-widget';
 
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
   const password = control.get('password');
@@ -41,6 +42,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
     MatSelectModule,
     MatProgressSpinnerModule,
     TranslateModule,
+    ChatWidgetComponent,
   ],
   templateUrl: './register.html',
   styleUrl: './register.scss',

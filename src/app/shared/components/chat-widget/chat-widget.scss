@@ -317,6 +317,48 @@ $amber:    #f59e0b;
   }
 }
 
+// Contact info form (guest)
+.contact-info-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contact-input {
+  border: 1.5px solid $border;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  color: $text;
+  background: $bg;
+  transition: border-color .15s;
+  &::placeholder { color: $muted; }
+  &:focus { border-color: $accent; background: $surface; }
+}
+
+.contact-continue-btn {
+  width: 100%;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, $primary, $accent);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: opacity .15s;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+  &:disabled { opacity: .4; cursor: not-allowed; }
+  &:not(:disabled):hover { opacity: .85; }
+}
+
 // Text input
 .text-input-wrap {
   display: flex;
@@ -395,7 +437,7 @@ $amber:    #f59e0b;
 
   .p-sub { font-size: 10px; font-weight: 400; color: $muted; }
 
-  &.normal-btn:hover { border-color: $green; background: rgba($green, .06); color: darken($green, 10%); }
+  &.normal-btn:hover { border-color: $green; background: rgba($green, .06); color: #059669; }
   &.urgent-btn:hover { border-color: $accent; background: rgba($accent, .06); color: $accent; }
 }
 

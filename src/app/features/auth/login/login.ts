@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from '../../../core/services/auth.service';
 import { User } from '../../../core/models/user.model';
+import { ChatWidgetComponent } from '../../../shared/components/chat-widget/chat-widget';
 
 interface DemoAccount { label: string; email: string; password: string; icon: string; badge: string; }
 
@@ -22,6 +23,7 @@ interface DemoAccount { label: string; email: string; password: string; icon: st
     MatCardModule, MatFormFieldModule, MatInputModule,
     MatButtonModule, MatIconModule, MatCheckboxModule,
     MatProgressSpinnerModule, TranslateModule,
+    ChatWidgetComponent,
   ],
   templateUrl: './login.html',
   styleUrl: './login.scss',
