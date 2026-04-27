@@ -204,3 +204,8 @@
     </main>
   </div>
 </div>
+
+<!-- ── Floating Chat Widget (customers only) ─────────────────────────────── -->
+@if (auth.isUser()) {
+  <app-chat-widget />
+}

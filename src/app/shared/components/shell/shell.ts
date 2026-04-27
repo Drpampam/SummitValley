@@ -12,6 +12,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from '../../../core/services/auth.service';
+import { ChatWidgetComponent } from '../chat-widget/chat-widget';
 import { LocaleService } from '../../../core/services/locale.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { SessionService } from '../../../core/services/session.service';
@@ -49,6 +50,7 @@ interface NavItem { path: string; icon: string; label: string; }
     MatMenuModule, MatBadgeModule, MatTooltipModule, MatDividerModule,
     MatDialogModule,
     TranslateModule,
+    ChatWidgetComponent,
   ],
   templateUrl: './shell.html',
   styleUrl: './shell.scss',
@@ -116,7 +118,6 @@ export class ShellComponent implements OnInit, OnDestroy {
       { path: '/beneficiaries', icon: 'people',                label: 'Beneficiaries' },
       { path: '/disputes',      icon: 'gavel',                 label: 'Disputes' },
       { path: '/alerts',        icon: 'notifications_active',  label: 'Alerts' },
-      { path: '/contact-us',    icon: 'headset_mic',           label: 'Contact Us' },
       { path: '/profile',       icon: 'manage_accounts',       label: 'Profile' },
     ];
   });
