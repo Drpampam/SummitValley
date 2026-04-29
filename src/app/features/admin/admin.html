@@ -1178,7 +1178,7 @@
               <td mat-cell *matCellDef="let t">
                 <div class="user-cell">
                   <div class="user-initials sm" [class.guest-initials]="!t.userId">
-                    {{ t.userId ? (ticketSubmitterName(t)[0] ?? '?') : '?' }}
+                    {{ t.userId ? ticketSubmitterName(t)[0] : '?' }}
                   </div>
                   <div>
                     <p class="user-name">{{ ticketSubmitterName(t) }}</p>
