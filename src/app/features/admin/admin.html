@@ -1012,6 +1012,252 @@
       </div>
     </mat-tab>
 
+    <!-- ── Tab 5: Disputes ────────────────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">gavel</mat-icon>
+        Disputes
+        @if (disputeCounts().submitted + disputeCounts().under_review > 0) {
+          <span class="tab-badge warn">{{ disputeCounts().submitted + disputeCounts().under_review }} open</span>
+        }
+      </ng-template>
+
+      <div class="tab-body">
+
+        <!-- Filter pills -->
+        <div class="admin-filter-pills">
+          @for (f of [
+            { val: 'all',          label: 'All',          count: disputeCounts().all },
+            { val: 'submitted',    label: 'Submitted',    count: disputeCounts().submitted },
+            { val: 'under_review', label: 'Under Review', count: disputeCounts().under_review },
+            { val: 'resolved',     label: 'Resolved',     count: disputeCounts().resolved },
+            { val: 'rejected',     label: 'Rejected',     count: disputeCounts().rejected }
+          ]; track f.val) {
+            <button
+              class="admin-pill"
+              [class.active]="disputeFilter() === f.val"
+              (click)="disputeFilter.set($any(f.val))"
+            >{{ f.label }} <span class="pill-num">{{ f.count }}</span></button>
+          }
+        </div>
+
+        @if (allDisputes().length === 0) {
+          <div class="admin-empty-state">
+            <mat-icon>gavel</mat-icon>
+            <p>No disputes have been submitted yet.</p>
+          </div>
+        } @else {
+          <table mat-table [dataSource]="filteredDisputes()" class="admin-table">
+
+            <ng-container matColumnDef="case">
+              <th mat-header-cell *matHeaderCellDef>Case #</th>
+              <td mat-cell *matCellDef="let d">
+                <span class="mono-text">{{ d.caseNumber }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="customer">
+              <th mat-header-cell *matHeaderCellDef>Customer</th>
+              <td mat-cell *matCellDef="let d">
+                <div class="user-cell">
+                  <div class="user-initials sm">{{ getDisputeUser(d.userId)?.firstName?.[0] }}{{ getDisputeUser(d.userId)?.lastName?.[0] }}</div>
+                  <div>
+                    <p class="user-name">{{ getUserName(d.userId) }}</p>
+                    <p class="user-email">{{ getDisputeUser(d.userId)?.email }}</p>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="reason">
+              <th mat-header-cell *matHeaderCellDef>Reason</th>
+              <td mat-cell *matCellDef="let d">
+                <span class="tag-chip">{{ disputeReasonLabel(d.reason) }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>Description</th>
+              <td mat-cell *matCellDef="let d">
+                <span class="desc-truncate" [title]="d.description">{{ d.description }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="submitted">
+              <th mat-header-cell *matHeaderCellDef>Submitted</th>
+              <td mat-cell *matCellDef="let d" class="muted-cell">{{ fmtDate(d.submittedAt) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let d">
+                <span class="status-chip {{ disputeStatusClass(d.status) }}">{{ disputeStatusLabel(d.status) }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let d">
+                <div class="action-cell">
+                  @if (d.status === 'submitted') {
+                    <button mat-stroked-button class="action-btn blue-btn" (click)="updateDisputeStatus(d, 'under_review')">
+                      <mat-icon>visibility</mat-icon> Review
+                    </button>
+                  }
+                  @if (d.status === 'submitted' || d.status === 'under_review') {
+                    <button mat-stroked-button class="action-btn green-btn" (click)="updateDisputeStatus(d, 'resolved')">
+                      <mat-icon>check_circle</mat-icon> Resolve
+                    </button>
+                    <button mat-stroked-button class="action-btn red-btn" (click)="updateDisputeStatus(d, 'rejected')">
+                      <mat-icon>cancel</mat-icon> Reject
+                    </button>
+                  }
+                  @if (d.status === 'resolved' || d.status === 'rejected') {
+                    <span class="closed-label">
+                      <mat-icon>lock</mat-icon> Closed {{ fmtDate(d.resolvedAt ?? '') }}
+                    </span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="['case','customer','reason','description','submitted','status','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['case','customer','reason','description','submitted','status','actions']"></tr>
+          </table>
+        }
+
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 6: Chat Requests ───────────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">chat</mat-icon>
+        Chat Requests
+        @if (ticketCounts().open + ticketCounts().in_progress > 0) {
+          <span class="tab-badge warn">{{ ticketCounts().open + ticketCounts().in_progress }} open</span>
+        }
+      </ng-template>
+
+      <div class="tab-body">
+
+        <!-- Filter pills -->
+        <div class="admin-filter-pills">
+          @for (f of [
+            { val: 'all',         label: 'All',         count: ticketCounts().all },
+            { val: 'open',        label: 'Open',        count: ticketCounts().open },
+            { val: 'in_progress', label: 'In Progress', count: ticketCounts().in_progress },
+            { val: 'resolved',    label: 'Resolved',    count: ticketCounts().resolved },
+            { val: 'closed',      label: 'Closed',      count: ticketCounts().closed }
+          ]; track f.val) {
+            <button
+              class="admin-pill"
+              [class.active]="ticketFilter() === f.val"
+              (click)="ticketFilter.set($any(f.val))"
+            >{{ f.label }} <span class="pill-num">{{ f.count }}</span></button>
+          }
+        </div>
+
+        @if (allTickets().length === 0) {
+          <div class="admin-empty-state">
+            <mat-icon>chat_bubble_outline</mat-icon>
+            <p>No chat requests yet. They appear here when customers submit via the chat widget.</p>
+          </div>
+        } @else {
+          <table mat-table [dataSource]="filteredTickets()" class="admin-table">
+
+            <ng-container matColumnDef="ref">
+              <th mat-header-cell *matHeaderCellDef>Case Ref</th>
+              <td mat-cell *matCellDef="let t">
+                <span class="mono-text">{{ t.caseRef }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="from">
+              <th mat-header-cell *matHeaderCellDef>From</th>
+              <td mat-cell *matCellDef="let t">
+                <div class="user-cell">
+                  <div class="user-initials sm" [class.guest-initials]="!t.userId">
+                    {{ t.userId ? (ticketSubmitterName(t)[0] ?? '?') : '?' }}
+                  </div>
+                  <div>
+                    <p class="user-name">{{ ticketSubmitterName(t) }}</p>
+                    <p class="user-email">{{ ticketSubmitterEmail(t) }}</p>
+                    @if (!t.userId) { <span class="guest-tag">Guest</span> }
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef>Category</th>
+              <td mat-cell *matCellDef="let t">
+                <span class="tag-chip">{{ t.category }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="message">
+              <th mat-header-cell *matHeaderCellDef>Message</th>
+              <td mat-cell *matCellDef="let t">
+                <span class="desc-truncate" [title]="t.message">{{ t.message }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="priority">
+              <th mat-header-cell *matHeaderCellDef>Priority</th>
+              <td mat-cell *matCellDef="let t">
+                <span class="status-chip" [class.badge-red]="t.priority === 'urgent'" [class.badge-green]="t.priority === 'normal'">
+                  {{ t.priority === 'urgent' ? '🔴 Urgent' : '🟢 Normal' }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="submitted">
+              <th mat-header-cell *matHeaderCellDef>Submitted</th>
+              <td mat-cell *matCellDef="let t" class="muted-cell">{{ fmtDate(t.submittedAt) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let t">
+                <span class="status-chip {{ ticketStatusClass(t.status) }}">{{ ticketStatusLabel(t.status) }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let t">
+                <div class="action-cell">
+                  @if (t.status === 'open') {
+                    <button mat-stroked-button class="action-btn blue-btn" (click)="updateTicketStatus(t, 'in_progress')">
+                      <mat-icon>play_circle</mat-icon> Pick Up
+                    </button>
+                  }
+                  @if (t.status === 'open' || t.status === 'in_progress') {
+                    <button mat-stroked-button class="action-btn green-btn" (click)="updateTicketStatus(t, 'resolved')">
+                      <mat-icon>check_circle</mat-icon> Resolve
+                    </button>
+                    <button mat-stroked-button class="action-btn red-btn" (click)="updateTicketStatus(t, 'closed')">
+                      <mat-icon>cancel</mat-icon> Close
+                    </button>
+                  }
+                  @if (t.status === 'resolved' || t.status === 'closed') {
+                    <span class="closed-label">
+                      <mat-icon>lock</mat-icon> {{ ticketStatusLabel(t.status) }} {{ fmtDate(t.resolvedAt ?? '') }}
+                    </span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="['ref','from','category','message','priority','submitted','status','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['ref','from','category','message','priority','submitted','status','actions']"></tr>
+          </table>
+        }
+
+      </div>
+    </mat-tab>
+
   </mat-tab-group>
 
 </div>

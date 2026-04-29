@@ -16,12 +16,16 @@ import { AuthService } from '../../core/services/auth.service';
 import { AccountService } from '../../core/services/account.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { PolicyService } from '../../core/services/policy.service';
+import { DisputeService } from '../../core/services/dispute.service';
+import { SupportTicketService } from '../../core/services/support-ticket.service';
 import { EmailService } from '../../core/services/email.service';
 import { LocaleService } from '../../core/services/locale.service';
 import { ToastService } from '../../core/services/toast.service';
 import { User, UserRole } from '../../core/models/user.model';
 import { Transaction, TransactionStatus, TransactionPolicy, PolicyRuleType } from '../../core/models/transaction.model';
 import { Account } from '../../core/models/account.model';
+import { Dispute, DisputeStatus } from '../../core/models/dispute.model';
+import { SupportTicket, TicketStatus } from '../../core/models/support-ticket.model';
 import { MOCK_ACCOUNTS } from '../../core/data/mock-data';
 
 export interface AdminTxnRow extends Transaction {
@@ -49,9 +53,11 @@ export class AdminComponent {
   txnSvc        = inject(TransactionService);
   locSvc        = inject(LocaleService);
   policySvc     = inject(PolicyService);
-  private emailSvc = inject(EmailService);
-  private fb       = inject(FormBuilder);
-  private toast    = inject(ToastService);
+  private disputeSvc  = inject(DisputeService);
+  private ticketSvc   = inject(SupportTicketService);
+  private emailSvc    = inject(EmailService);
+  private fb          = inject(FormBuilder);
+  private toast       = inject(ToastService);
 
   // ── Filters ───────────────────────────────────────────────────────────────
   filterUserId  = signal<string>('');
@@ -560,6 +566,125 @@ export class AdminComponent {
 
   ruleTypeIcon(rt: PolicyRuleType): string {
     return rt === 'block_all_outgoing' ? 'block' : 'money_off';
+  }
+
+  // ── Disputes ──────────────────────────────────────────────────────────────
+
+  disputeFilter = signal<DisputeStatus | 'all'>('all');
+
+  readonly allDisputes  = computed<Dispute[]>(() => this.disputeSvc.allDisputes());
+
+  readonly filteredDisputes = computed<Dispute[]>(() => {
+    const f = this.disputeFilter();
+    return f === 'all' ? this.allDisputes() : this.allDisputes().filter(d => d.status === f);
+  });
+
+  readonly disputeCounts = computed(() => {
+    const all = this.allDisputes();
+    return {
+      all:          all.length,
+      submitted:    all.filter(d => d.status === 'submitted').length,
+      under_review: all.filter(d => d.status === 'under_review').length,
+      resolved:     all.filter(d => d.status === 'resolved').length,
+      rejected:     all.filter(d => d.status === 'rejected').length,
+    };
+  });
+
+  updateDisputeStatus(d: Dispute, status: DisputeStatus): void {
+    this.disputeSvc.updateDisputeStatus(d.id, status);
+    this.toast.success(`${d.caseNumber} marked as "${this.disputeStatusLabel(status)}"`);
+  }
+
+  getDisputeUser(userId: string): User | undefined {
+    return this.auth.allUsersReactive().find(u => u.id === userId);
+  }
+
+  getDisputeTransaction(transactionId: string): Transaction | undefined {
+    return this.txnSvc.allTransactions.find(t => t.id === transactionId);
+  }
+
+  disputeStatusLabel(status: string): string {
+    const m: Record<string, string> = {
+      submitted: 'Submitted', under_review: 'Under Review',
+      resolved: 'Resolved', rejected: 'Rejected',
+    };
+    return m[status] ?? status;
+  }
+
+  disputeStatusClass(status: string): string {
+    const m: Record<string, string> = {
+      submitted: 'badge-blue', under_review: 'badge-amber',
+      resolved: 'badge-green', rejected: 'badge-red',
+    };
+    return m[status] ?? '';
+  }
+
+  disputeReasonLabel(reason: string): string {
+    const m: Record<string, string> = {
+      unauthorized: 'Unauthorized', duplicate: 'Duplicate',
+      incorrect_amount: 'Wrong Amount', merchant_error: 'Merchant Error',
+      not_received: 'Not Received', other: 'Other',
+    };
+    return m[reason] ?? reason;
+  }
+
+  // ── Support Tickets ───────────────────────────────────────────────────────
+
+  ticketFilter = signal<TicketStatus | 'all'>('all');
+
+  readonly allTickets = computed<SupportTicket[]>(() => this.ticketSvc.allTickets());
+
+  readonly filteredTickets = computed<SupportTicket[]>(() => {
+    const f = this.ticketFilter();
+    return f === 'all' ? this.allTickets() : this.allTickets().filter(t => t.status === f);
+  });
+
+  readonly ticketCounts = computed(() => {
+    const all = this.allTickets();
+    return {
+      all:         all.length,
+      open:        all.filter(t => t.status === 'open').length,
+      in_progress: all.filter(t => t.status === 'in_progress').length,
+      resolved:    all.filter(t => t.status === 'resolved').length,
+      closed:      all.filter(t => t.status === 'closed').length,
+    };
+  });
+
+  updateTicketStatus(t: SupportTicket, status: TicketStatus): void {
+    this.ticketSvc.updateStatus(t.id, status);
+    this.toast.success(`${t.caseRef} updated to "${this.ticketStatusLabel(status)}"`);
+  }
+
+  ticketSubmitterName(t: SupportTicket): string {
+    if (t.userId) {
+      const u = this.getDisputeUser(t.userId);
+      return u ? `${u.firstName} ${u.lastName}` : t.userId;
+    }
+    return t.guestName ?? 'Guest';
+  }
+
+  ticketSubmitterEmail(t: SupportTicket): string {
+    if (t.userId) return this.getDisputeUser(t.userId)?.email ?? '';
+    return t.guestEmail ?? '';
+  }
+
+  ticketStatusLabel(status: string): string {
+    const m: Record<string, string> = {
+      open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed',
+    };
+    return m[status] ?? status;
+  }
+
+  ticketStatusClass(status: string): string {
+    const m: Record<string, string> = {
+      open: 'badge-blue', in_progress: 'badge-amber', resolved: 'badge-green', closed: 'badge-red',
+    };
+    return m[status] ?? '';
+  }
+
+  fmtDate(iso: string): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
 }
