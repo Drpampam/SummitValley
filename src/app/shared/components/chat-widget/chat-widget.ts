@@ -2,6 +2,7 @@ import { Component, inject, signal, ViewChild, ElementRef, afterNextRender } fro
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../../core/services/auth.service';
 import { EmailService } from '../../../core/services/email.service';
+import { SupportTicketService } from '../../../core/services/support-ticket.service';
 
 type ChatStep = 'greeting' | 'message' | 'contact_info' | 'priority' | 'submitting' | 'done';
 
@@ -15,8 +16,9 @@ interface Msg { from: 'bot' | 'user'; text: string; }
   styleUrl:    './chat-widget.scss',
 })
 export class ChatWidgetComponent {
-  private auth     = inject(AuthService);
-  private emailSvc = inject(EmailService);
+  private auth       = inject(AuthService);
+  private emailSvc   = inject(EmailService);
+  private ticketSvc  = inject(SupportTicketService);
 
   @ViewChild('msgList') private msgList!: ElementRef<HTMLElement>;
 
@@ -146,6 +148,16 @@ export class ChatWidgetComponent {
     const email = user?.email ?? this.guestEmail();
     const ref   = 'SVB-' + Date.now().toString(36).toUpperCase();
     this.caseRef.set(ref);
+
+    this.ticketSvc.create({
+      userId:     user?.id,
+      guestName:  user ? undefined : this.guestName(),
+      guestEmail: user ? undefined : this.guestEmail(),
+      category:   this._topic,
+      message:    this._message,
+      priority,
+      caseRef:    ref,
+    });
 
     this.emailSvc.sendContactRequest(email, name, {
       category: this._topic,

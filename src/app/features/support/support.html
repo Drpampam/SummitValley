@@ -18,6 +18,10 @@
         <span class="sp-kpi-lbl">Customers</span>
       </div>
       <div class="sp-kpi sp-kpi-warn">
+        <span class="sp-kpi-val">{{ stats().openTickets }}</span>
+        <span class="sp-kpi-lbl">Open Requests</span>
+      </div>
+      <div class="sp-kpi sp-kpi-warn">
         <span class="sp-kpi-val">{{ stats().openDisputes }}</span>
         <span class="sp-kpi-lbl">Open Disputes</span>
       </div>
@@ -25,15 +29,20 @@
         <span class="sp-kpi-val">{{ stats().resolvedToday }}</span>
         <span class="sp-kpi-lbl">Resolved Today</span>
       </div>
-      <div class="sp-kpi">
-        <span class="sp-kpi-val">{{ stats().totalDisputes }}</span>
-        <span class="sp-kpi-lbl">Total Disputes</span>
-      </div>
     </div>
   </div>
 
   <!-- ══ Tab Bar ══════════════════════════════════════════════════════════════ -->
   <div class="sp-tabs">
+    <button class="sp-tab" [class.sp-tab-active]="activeTab() === 'tickets'" (click)="activeTab.set('tickets')">
+      <mat-icon>chat</mat-icon>
+      <span>Chat Requests</span>
+      @if (stats().openTickets > 0) {
+        <span class="sp-tab-count sp-tab-count-warn">{{ stats().openTickets }}</span>
+      } @else {
+        <span class="sp-tab-count">{{ ticketCounts().all }}</span>
+      }
+    </button>
     <button class="sp-tab" [class.sp-tab-active]="activeTab() === 'customers'" (click)="activeTab.set('customers')">
       <mat-icon>people</mat-icon>
       <span>Customers</span>
@@ -53,6 +62,130 @@
       <span>Transactions</span>
     </button>
   </div>
+
+  <!-- ══ CHAT REQUESTS ═══════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'tickets') {
+    <div class="sp-panel">
+
+      <!-- Toolbar with filter pills -->
+      <div class="sp-toolbar">
+        <div class="sp-filter-pills">
+          @for (f of [
+            { val: 'all',         label: 'All',         count: ticketCounts().all },
+            { val: 'open',        label: 'Open',        count: ticketCounts().open },
+            { val: 'in_progress', label: 'In Progress', count: ticketCounts().in_progress },
+            { val: 'resolved',    label: 'Resolved',    count: ticketCounts().resolved },
+            { val: 'closed',      label: 'Closed',      count: ticketCounts().closed }
+          ]; track f.val) {
+            <button
+              class="sp-filter-pill"
+              [class.active]="ticketFilter() === f.val"
+              (click)="ticketFilter.set($any(f.val))"
+            >
+              {{ f.label }}
+              <span class="sp-pill-num">{{ f.count }}</span>
+            </button>
+          }
+        </div>
+        <span class="sp-count">{{ filteredTickets().length }} request{{ filteredTickets().length !== 1 ? 's' : '' }}</span>
+      </div>
+
+      <!-- Table -->
+      <div class="sp-scroll">
+        @if (allTickets().length === 0) {
+          <div class="sp-empty-state">
+            <mat-icon>chat_bubble_outline</mat-icon>
+            <p>No chat requests yet. They'll appear here when customers use the chat widget.</p>
+          </div>
+        } @else {
+          <table class="sp-table">
+            <thead>
+              <tr>
+                <th>Case Ref</th>
+                <th>From</th>
+                <th>Category</th>
+                <th>Message</th>
+                <th>Priority</th>
+                <th>Submitted</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of filteredTickets(); track t.id) {
+                <tr class="sp-row">
+                  <td><span class="sp-mono">{{ t.caseRef }}</span></td>
+                  <td>
+                    <div class="sp-customer">
+                      @if (t.userId) {
+                        <div class="sp-avatar sp-avatar-sm">{{ initials(getUserById(t.userId)!) }}</div>
+                      } @else {
+                        <div class="sp-avatar sp-avatar-sm sp-avatar-guest">
+                          <mat-icon>person_outline</mat-icon>
+                        </div>
+                      }
+                      <div>
+                        <p class="sp-name">{{ ticketSubmitterName(t) }}</p>
+                        <p class="sp-muted" style="font-size:11px">{{ ticketSubmitterEmail(t) }}</p>
+                        @if (!t.userId) {
+                          <span class="sp-badge sp-badge-muted">Guest</span>
+                        }
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="sp-cat-tag">{{ t.category }}</span></td>
+                  <td><span class="sp-desc" [title]="t.message">{{ t.message }}</span></td>
+                  <td>
+                    <span class="sp-status-badge {{ ticketPriorityClass(t.priority) }}">
+                      {{ t.priority === 'urgent' ? '🔴 Urgent' : '🟢 Normal' }}
+                    </span>
+                  </td>
+                  <td class="sp-muted">{{ fmtDate(t.submittedAt) }}</td>
+                  <td>
+                    <span class="sp-status-badge {{ ticketStatusClass(t.status) }}">
+                      {{ ticketStatusLabel(t.status) }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="sp-actions">
+                      @if (t.status === 'open') {
+                        <button class="sp-action-btn sp-btn-blue" (click)="updateTicketStatus(t, 'in_progress')" matTooltip="Start working on this">
+                          <mat-icon>play_circle</mat-icon> Pick Up
+                        </button>
+                      }
+                      @if (t.status === 'open' || t.status === 'in_progress') {
+                        <button class="sp-action-btn sp-btn-green" (click)="updateTicketStatus(t, 'resolved')" matTooltip="Mark as resolved">
+                          <mat-icon>check_circle</mat-icon> Resolve
+                        </button>
+                        <button class="sp-action-btn sp-btn-red" (click)="updateTicketStatus(t, 'closed')" matTooltip="Close without resolving">
+                          <mat-icon>cancel</mat-icon> Close
+                        </button>
+                      }
+                      @if (t.status === 'resolved' || t.status === 'closed') {
+                        <span class="sp-closed">
+                          <mat-icon>lock</mat-icon>
+                          {{ ticketStatusLabel(t.status) }} {{ fmtDate(t.resolvedAt ?? '') }}
+                        </span>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+
+              @if (filteredTickets().length === 0) {
+                <tr>
+                  <td colspan="8" class="sp-empty">
+                    <mat-icon>chat_bubble_outline</mat-icon>
+                    <p>No requests with status "{{ ticketStatusLabel(ticketFilter()) }}"</p>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+  }
 
   <!-- ══ CUSTOMERS ════════════════════════════════════════════════════════════ -->
   @if (activeTab() === 'customers') {

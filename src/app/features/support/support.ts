@@ -7,14 +7,16 @@ import { AuthService } from '../../core/services/auth.service';
 import { AccountService } from '../../core/services/account.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { DisputeService } from '../../core/services/dispute.service';
+import { SupportTicketService } from '../../core/services/support-ticket.service';
 import { LocaleService } from '../../core/services/locale.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Dispute, DisputeStatus } from '../../core/models/dispute.model';
+import { SupportTicket, TicketStatus } from '../../core/models/support-ticket.model';
 import { Transaction } from '../../core/models/transaction.model';
 import { Account } from '../../core/models/account.model';
 import { User } from '../../core/models/user.model';
 
-type SupportTab = 'customers' | 'disputes' | 'transactions';
+type SupportTab = 'customers' | 'tickets' | 'disputes' | 'transactions';
 
 @Component({
   selector: 'app-support',
@@ -28,11 +30,13 @@ export class SupportComponent {
   private accountSvc = inject(AccountService);
   private txnSvc     = inject(TransactionService);
   private disputeSvc = inject(DisputeService);
+  private ticketSvc  = inject(SupportTicketService);
   localeService      = inject(LocaleService);
   private toast      = inject(ToastService);
 
-  activeTab       = signal<SupportTab>('customers');
+  activeTab       = signal<SupportTab>('tickets');
   customerSearch  = signal('');
+  ticketFilter    = signal<TicketStatus | 'all'>('all');
   disputeFilter   = signal<DisputeStatus | 'all'>('all');
   txnSearch       = signal('');
   expandedRow     = signal<string | null>(null);
@@ -44,11 +48,14 @@ export class SupportComponent {
 
   readonly stats = computed(() => {
     const disputes = this.disputeSvc.allDisputes();
+    const tickets  = this.ticketSvc.allTickets();
     const open     = disputes.filter(d => d.status === 'submitted' || d.status === 'under_review').length;
     const today    = new Date().toISOString().slice(0, 10);
     const resolved = disputes.filter(d => d.resolvedAt?.startsWith(today)).length;
+    const openTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
     return {
-      customers:   this.customers().length,
+      customers:    this.customers().length,
+      openTickets,
       openDisputes: open,
       resolvedToday: resolved,
       totalDisputes: disputes.length,
@@ -102,6 +109,60 @@ export class SupportComponent {
     } finally {
       this.resettingPwd.set(null);
     }
+  }
+
+  // ── Support Tickets ───────────────────────────────────────────────────────
+
+  readonly allTickets = computed<SupportTicket[]>(() => this.ticketSvc.allTickets());
+
+  readonly filteredTickets = computed<SupportTicket[]>(() => {
+    const f   = this.ticketFilter();
+    const all = this.allTickets();
+    return f === 'all' ? all : all.filter(t => t.status === f);
+  });
+
+  readonly ticketCounts = computed(() => {
+    const all = this.allTickets();
+    return {
+      all:         all.length,
+      open:        all.filter(t => t.status === 'open').length,
+      in_progress: all.filter(t => t.status === 'in_progress').length,
+      resolved:    all.filter(t => t.status === 'resolved').length,
+      closed:      all.filter(t => t.status === 'closed').length,
+    };
+  });
+
+  ticketSubmitterName(t: SupportTicket): string {
+    if (t.userId) return this.getUserName(t.userId);
+    return t.guestName ?? 'Guest';
+  }
+
+  ticketSubmitterEmail(t: SupportTicket): string {
+    if (t.userId) return this.getUserById(t.userId)?.email ?? '';
+    return t.guestEmail ?? '';
+  }
+
+  updateTicketStatus(t: SupportTicket, status: TicketStatus): void {
+    this.ticketSvc.updateStatus(t.id, status);
+    this.toast.success(`${t.caseRef} updated to "${this.ticketStatusLabel(status)}".`);
+  }
+
+  ticketStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed',
+    };
+    return map[status] ?? status;
+  }
+
+  ticketStatusClass(status: string): string {
+    const map: Record<string, string> = {
+      open: 'badge-blue', in_progress: 'badge-amber', resolved: 'badge-green', closed: 'badge-red',
+    };
+    return map[status] ?? '';
+  }
+
+  ticketPriorityClass(priority: string): string {
+    return priority === 'urgent' ? 'badge-red' : 'badge-green';
   }
 
   // ── Disputes ──────────────────────────────────────────────────────────────

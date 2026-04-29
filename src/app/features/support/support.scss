@@ -584,3 +584,41 @@ $muted-bg:  #f8fafc;
 
   p { margin: 0; font-size: 14px; }
 }
+
+// ── Guest avatar (chat requests) ──────────────────────────────────────────────
+.sp-avatar-guest {
+  background: $muted;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; color: #fff; }
+}
+
+.sp-badge-muted {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  background: rgba($muted, .15);
+  color: $muted;
+}
+
+// ── Ticket empty state ────────────────────────────────────────────────────────
+.sp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  color: $muted;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    opacity: .3;
+  }
+
+  p { margin: 0; font-size: 14px; text-align: center; }
+}
