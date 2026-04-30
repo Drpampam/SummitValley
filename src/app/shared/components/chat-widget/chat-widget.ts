@@ -59,7 +59,8 @@ export class ChatWidgetComponent implements OnDestroy {
 
   private _topic    = '';
   private _message  = '';
-  private _unsubSession:   (() => void) | null = null;
+  private _unsubSession:      (() => void) | null = null;
+  private _unsubCustomerQueue: (() => void) | null = null;
   private _typingTimer:    ReturnType<typeof setTimeout> | null = null;
   private _pendingTimer:   ReturnType<typeof setTimeout> | null = null;
   private _inactivityTimer: ReturnType<typeof setTimeout> | null = null;
@@ -88,6 +89,7 @@ export class ChatWidgetComponent implements OnDestroy {
     if (session?.status === 'active')  this.liveChatSvc.closeSession(session.id);
     if (session?.status === 'pending') this.liveChatSvc.abandonSession(session.id);
     this._unsubSession?.();
+    this._unsubCustomerQueue?.();
   }
 
   private _clearAllTimers(): void {
@@ -313,6 +315,26 @@ export class ChatWidgetComponent implements OnDestroy {
         }
       },
     );
+
+    // Subscribe to the queue channel so the agent's accept broadcast reaches us cross-device
+    this._unsubCustomerQueue = this.liveChatSvc.subscribeCustomerToQueue(
+      session.id,
+      (updated) => {
+        this.liveSession.set(updated);
+        if (updated.status === 'active' && this.step() === 'live_waiting') {
+          if (this._pendingTimer) { clearTimeout(this._pendingTimer); this._pendingTimer = null; }
+          this.step.set('live_chat');
+          this._startInactivityTimer();
+          this._scrollLiveBottom();
+        }
+        if (updated.status === 'closed' || updated.status === 'abandoned') {
+          this._clearLiveTimers();
+          this.step.set('done');
+          this.caseRef.set(updated.id.slice(4, 12).toUpperCase());
+          this._scrollBottom();
+        }
+      },
+    );
   }
 
   cancelLiveAgent(): void {
@@ -322,6 +344,8 @@ export class ChatWidgetComponent implements OnDestroy {
     if (session) this.liveChatSvc.abandonSession(session.id);
     this._unsubSession?.();
     this._unsubSession = null;
+    this._unsubCustomerQueue?.();
+    this._unsubCustomerQueue = null;
     this.liveSession.set(null);
     this.step.set(this._message ? 'priority' : 'greeting');
     this._scrollBottom();
@@ -374,6 +398,8 @@ export class ChatWidgetComponent implements OnDestroy {
     if (session) this.liveChatSvc.closeSession(session.id);
     this._unsubSession?.();
     this._unsubSession = null;
+    this._unsubCustomerQueue?.();
+    this._unsubCustomerQueue = null;
     this.step.set('done');
     this.caseRef.set(session?.id.slice(4, 12).toUpperCase() ?? '');
     this._scrollBottom();
@@ -383,6 +409,8 @@ export class ChatWidgetComponent implements OnDestroy {
     this._clearLiveTimers();
     this._unsubSession?.();
     this._unsubSession = null;
+    this._unsubCustomerQueue?.();
+    this._unsubCustomerQueue = null;
     this.messages.set([]);
     this.step.set('greeting');
     this.inputText.set('');

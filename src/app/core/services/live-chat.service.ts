@@ -23,13 +23,16 @@ export class LiveChatService {
   private _messages: WritableSignal<LiveChatMessage[]>;
   private _channels = new Map<string, RealtimeChannel>();
 
-  /** Callbacks wired up for cross-tab (localStorage) delivery */
-  private _queueCbs:   QueueEntry[] = [];
-  private _sessionCbs  = new Map<string, SessionEntry>();
+  /**
+   * Cross-tab (same browser) callback registries.
+   * Supabase handles cross-device; storage events handle cross-tab.
+   * Guards in _listenCrossTab prevent double-delivery when both paths are active.
+   */
+  private _queueCbs:  QueueEntry[] = [];
+  private _sessionCbs = new Map<string, SessionEntry>();
 
   readonly onlineAgentCount = signal(0);
 
-  /** Pending sessions older than this are auto-abandoned on startup */
   static readonly STALE_PENDING_MS = 2 * 60 * 60 * 1000; // 2 h
 
   constructor() {
@@ -41,10 +44,11 @@ export class LiveChatService {
     this._listenCrossTab();
   }
 
-  // ── Cross-tab sync via storage event ─────────────────────────────────────
+  // ── Cross-tab sync (same browser, different tabs) ─────────────────────────
 
   private _listenCrossTab(): void {
     window.addEventListener('storage', (e: StorageEvent) => {
+
       if (e.key === 'svb_live_chat_sessions' && e.newValue !== null) {
         try {
           const incoming = JSON.parse(e.newValue) as LiveChatSession[];
@@ -53,16 +57,27 @@ export class LiveChatService {
 
           incoming.forEach(s => {
             const prev = prevMap.get(s.id);
+
             if (!prev && s.status === 'pending') {
-              // Brand-new session — notify queue listeners
-              this._queueCbs.forEach(cb => cb.onNewSession(s));
+              // New session — skip if Supabase queue is live (Supabase delivers it)
+              if (!this._channels.has('queue')) {
+                this._queueCbs.forEach(cb => cb.onNewSession(s));
+              }
             } else if (prev && prev.status !== s.status) {
-              // Status changed — notify queue and per-session listeners
-              this._queueCbs.forEach(cb => cb.onSessionUpdate(s));
-              this._sessionCbs.get(s.id)?.onSessionUpdate(s);
+              // Status change
+              if (!this._channels.has('queue')) {
+                this._queueCbs.forEach(cb => cb.onSessionUpdate(s));
+              }
+              if (!this._channels.has(`session-${s.id}`)) {
+                this._sessionCbs.get(s.id)?.onSessionUpdate(s);
+              }
+              // Customer queue subscription (subscribeCustomerToQueue path)
+              if (!this._channels.has(`session-${s.id}`)) {
+                this._customerQueueCbs.get(s.id)?.(s);
+              }
             }
           });
-        } catch { /* ignore */ }
+        } catch { /* ignore parse errors */ }
       }
 
       if (e.key === 'svb_live_chat_messages' && e.newValue !== null) {
@@ -72,13 +87,18 @@ export class LiveChatService {
           this._messages.set(incoming);
           incoming
             .filter(m => !oldIds.has(m.id))
-            .forEach(m => this._sessionCbs.get(m.sessionId)?.onMessage(m));
-        } catch { /* ignore */ }
+            .forEach(m => {
+              // Skip cross-tab delivery if Supabase session channel is live
+              if (!this._channels.has(`session-${m.sessionId}`)) {
+                this._sessionCbs.get(m.sessionId)?.onMessage(m);
+              }
+            });
+        } catch { /* ignore parse errors */ }
       }
     });
   }
 
-  // ── Stale session pruning ────────────────────────────────────────────────
+  // ── Stale session pruning ─────────────────────────────────────────────────
 
   private _pruneStale(): void {
     const cutoff = Date.now() - LiveChatService.STALE_PENDING_MS;
@@ -140,7 +160,7 @@ export class LiveChatService {
       openedAt:     new Date().toISOString(),
     };
     this._sessions.update(list => [session, ...list]);
-    // Cross-tab: storage event fires in agent tab; Supabase: broadcast to queue channel
+    // Cross-tab handled by storage event; Supabase handled in subscribeCustomerToQueue
     this._broadcastToQueue('new_session', session);
     return session;
   }
@@ -157,7 +177,9 @@ export class LiveChatService {
       })
     );
     if (accepted) {
+      // Queue broadcast: reaches customer who is subscribed to queue via subscribeCustomerToQueue
       this._broadcastToQueue('session_update', accepted);
+      // Session channel broadcast: reaches customer if already subscribed (message channel)
       this._broadcastOnSession(accepted.id, 'session_update', accepted);
     }
     return accepted;
@@ -204,12 +226,69 @@ export class LiveChatService {
       ...msg,
     };
     this._messages.update(list => [...list, message]);
-    // Cross-tab: storage event delivers to other tab; Supabase: broadcast on session channel
     this._broadcastOnSession(message.sessionId, 'message', message);
     return message;
   }
 
-  // ── Queue subscription (agent side) ──────────────────────────────────────
+  // ── Customer queue subscription ───────────────────────────────────────────
+  // Used by the chat widget so the customer can:
+  //   a) broadcast new_session to agents on other devices (Supabase)
+  //   b) receive session_update (accept/close) from agents via queue channel
+
+  private _customerQueueCbs = new Map<string, (s: LiveChatSession) => void>();
+
+  subscribeCustomerToQueue(
+    sessionId: string,
+    onSessionUpdate: (s: LiveChatSession) => void,
+  ): () => void {
+    // Always register for cross-tab delivery
+    this._customerQueueCbs.set(sessionId, onSessionUpdate);
+    const removeLocal = () => this._customerQueueCbs.delete(sessionId);
+
+    if (!this.sb.isConfigured) return removeLocal;
+
+    // If agent queue channel already exists in this instance, piggyback on it
+    const existing = this._channels.get('queue');
+    if (existing) {
+      // The agent's queue channel will already deliver session_update events
+      // via _queueCbs → but _queueCbs contains agent callbacks, not customer ones.
+      // We need to listen ourselves — but we can't add a new handler to an existing
+      // subscribed channel. Instead, the cross-tab path covers same-device; for
+      // cross-device this code path only runs on the customer's own instance
+      // (no agent on the same device), so `existing` won't be present.
+      return removeLocal;
+    }
+
+    // Subscribe customer to queue channel so they can send new_session broadcasts
+    // and receive session_update (agent accept) events
+    const channel = this.sb.client.channel('live-chat-queue');
+    channel
+      .on('broadcast', { event: 'session_update' }, ({ payload }) => {
+        const s = payload as LiveChatSession;
+        if (s.id === sessionId) {
+          this._sessions.update(list => list.map(x => x.id === s.id ? s : x));
+          onSessionUpdate(s);
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Now that we're subscribed, send the new_session broadcast
+          // (the session was created before subscribing, so we re-broadcast now)
+          const session = this._sessions().find(s => s.id === sessionId);
+          if (session && session.status === 'pending') {
+            channel.send({ type: 'broadcast', event: 'new_session', payload: session });
+          }
+        }
+      });
+    this._channels.set('queue', channel);
+    return () => {
+      channel.unsubscribe();
+      this._channels.delete('queue');
+      removeLocal();
+    };
+  }
+
+  // ── Agent queue subscription ──────────────────────────────────────────────
 
   subscribeToQueue(
     onNewSession:    (s: LiveChatSession) => void,
@@ -225,13 +304,19 @@ export class LiveChatService {
 
     const existing = this._channels.get('queue');
     if (existing) {
-      return () => { existing.unsubscribe(); removeLocal(); };
+      // Channel is already subscribed (either shell already registered, or customer queue).
+      // Don't unsubscribe the shared channel — just deregister callbacks on cleanup.
+      return removeLocal;
     }
 
     const channel = this.sb.client.channel('live-chat-queue');
     channel
       .on('broadcast', { event: 'new_session' }, ({ payload }) => {
         const s = payload as LiveChatSession;
+        // Update local state and fire all agent queue callbacks
+        this._sessions.update(list =>
+          list.some(x => x.id === s.id) ? list : [s, ...list]
+        );
         this._queueCbs.forEach(cb => cb.onNewSession(s));
       })
       .on('broadcast', { event: 'session_update' }, ({ payload }) => {
@@ -241,10 +326,11 @@ export class LiveChatService {
       })
       .subscribe();
     this._channels.set('queue', channel);
+    // Owned by this subscriber — unsubscribe when this subscriber cleans up
     return () => { channel.unsubscribe(); this._channels.delete('queue'); removeLocal(); };
   }
 
-  // ── Session subscription (customer + agent) ───────────────────────────────
+  // ── Session subscription (messages + typing) ──────────────────────────────
 
   subscribeToSession(
     sessionId:       string,
@@ -252,6 +338,7 @@ export class LiveChatService {
     onSessionUpdate: (s: LiveChatSession)    => void,
     onTyping:        (id: string, t: boolean) => void,
   ): () => void {
+    // Register cross-tab callbacks (overwrite if called twice — only one subscriber per session per device)
     this._sessionCbs.set(sessionId, { onMessage, onSessionUpdate });
     const removeLocal = () => this._sessionCbs.delete(sessionId);
 
@@ -263,6 +350,7 @@ export class LiveChatService {
     channel
       .on('broadcast', { event: 'message' }, ({ payload }) => {
         const msg = payload as LiveChatMessage;
+        // Deduplicate (in case cross-tab also fires)
         this._messages.update(list =>
           list.some(m => m.id === msg.id) ? list : [...list, msg]
         );
@@ -327,7 +415,8 @@ export class LiveChatService {
   unsubscribeAll(): void {
     this._channels.forEach(ch => ch.unsubscribe());
     this._channels.clear();
-    this._queueCbs   = [];
+    this._queueCbs = [];
     this._sessionCbs.clear();
+    this._customerQueueCbs.clear();
   }
 }

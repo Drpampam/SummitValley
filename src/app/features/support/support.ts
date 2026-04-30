@@ -85,7 +85,6 @@ export class SupportComponent implements OnInit, OnDestroy {
     if (session) this.liveSvc.closeSession(session.id);
     this._unsubQueue?.();
     this._unsubSession?.();
-    this.liveSvc.unsubscribeAll();
   }
 
   // ── Live Chat methods ─────────────────────────────────────────────────────
