@@ -16,6 +16,8 @@ import { ChatWidgetComponent } from '../chat-widget/chat-widget';
 import { LocaleService } from '../../../core/services/locale.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { SessionService } from '../../../core/services/session.service';
+import { LiveChatService } from '../../../core/services/live-chat.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { AccountAlert } from '../../../core/models/alert.model';
 import { AppLocale } from '../../../core/models/user.model';
 import { environment } from '../../../../environments/environment';
@@ -62,15 +64,35 @@ export class ShellComponent implements OnInit, OnDestroy {
   private alertSvc  = inject(AlertService);
   sessionSvc        = inject(SessionService);
   private dialog    = inject(MatDialog);
+  private liveSvc   = inject(LiveChatService);
+  private toast     = inject(ToastService);
 
   readonly sessionTimeoutMinutes = environment.sessionTimeoutMinutes;
 
+  private _unsubLiveQueue: (() => void) | null = null;
+
+  /** Pending live chat count — shown as badge on the Support Console nav item for CS agents */
+  readonly pendingLiveCount = computed(() =>
+    this.auth.user()?.role === 'customer_service' ? this.liveSvc.pendingCount() : 0
+  );
+
   ngOnInit(): void {
     this.sessionSvc.start(() => this.auth.logout());
+    // CS agents get new-session notifications wherever they are in the app
+    if (this.auth.user()?.role === 'customer_service') {
+      this._unsubLiveQueue = this.liveSvc.subscribeToQueue(
+        (session) => {
+          const who = session.guestName ?? session.customerId ?? 'A customer';
+          this.toast.info(`💬 New live chat request from ${who}`);
+        },
+        () => {},
+      );
+    }
   }
 
   ngOnDestroy(): void {
     this.sessionSvc.stop();
+    this._unsubLiveQueue?.();
   }
 
   readonly locales: { value: AppLocale; flag: string; label: string }[] = [

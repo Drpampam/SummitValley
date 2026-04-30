@@ -4,6 +4,16 @@ import { SupabaseService } from './supabase.service';
 import { StorageService } from './storage.service';
 import { LiveChatSession, LiveChatMessage, LiveChatStatus } from '../models/live-chat.model';
 
+interface QueueEntry {
+  onNewSession:    (s: LiveChatSession) => void;
+  onSessionUpdate: (s: LiveChatSession) => void;
+}
+
+interface SessionEntry {
+  onMessage:       (m: LiveChatMessage) => void;
+  onSessionUpdate: (s: LiveChatSession) => void;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LiveChatService {
   private sb      = inject(SupabaseService);
@@ -13,10 +23,14 @@ export class LiveChatService {
   private _messages: WritableSignal<LiveChatMessage[]>;
   private _channels = new Map<string, RealtimeChannel>();
 
+  /** Callbacks wired up for cross-tab (localStorage) delivery */
+  private _queueCbs:   QueueEntry[] = [];
+  private _sessionCbs  = new Map<string, SessionEntry>();
+
   readonly onlineAgentCount = signal(0);
 
   /** Pending sessions older than this are auto-abandoned on startup */
-  static readonly STALE_PENDING_MS = 2 * 60 * 60 * 1000; // 2 hours
+  static readonly STALE_PENDING_MS = 2 * 60 * 60 * 1000; // 2 h
 
   constructor() {
     this._sessions = signal(this.storage.get<LiveChatSession[]>('live_chat_sessions') ?? []);
@@ -24,7 +38,47 @@ export class LiveChatService {
     effect(() => { this.storage.set('live_chat_sessions', this._sessions()); });
     effect(() => { this.storage.set('live_chat_messages', this._messages()); });
     this._pruneStale();
+    this._listenCrossTab();
   }
+
+  // ── Cross-tab sync via storage event ─────────────────────────────────────
+
+  private _listenCrossTab(): void {
+    window.addEventListener('storage', (e: StorageEvent) => {
+      if (e.key === 'svb_live_chat_sessions' && e.newValue !== null) {
+        try {
+          const incoming = JSON.parse(e.newValue) as LiveChatSession[];
+          const prevMap  = new Map(this._sessions().map(s => [s.id, s]));
+          this._sessions.set(incoming);
+
+          incoming.forEach(s => {
+            const prev = prevMap.get(s.id);
+            if (!prev && s.status === 'pending') {
+              // Brand-new session — notify queue listeners
+              this._queueCbs.forEach(cb => cb.onNewSession(s));
+            } else if (prev && prev.status !== s.status) {
+              // Status changed — notify queue and per-session listeners
+              this._queueCbs.forEach(cb => cb.onSessionUpdate(s));
+              this._sessionCbs.get(s.id)?.onSessionUpdate(s);
+            }
+          });
+        } catch { /* ignore */ }
+      }
+
+      if (e.key === 'svb_live_chat_messages' && e.newValue !== null) {
+        try {
+          const incoming = JSON.parse(e.newValue) as LiveChatMessage[];
+          const oldIds   = new Set(this._messages().map(m => m.id));
+          this._messages.set(incoming);
+          incoming
+            .filter(m => !oldIds.has(m.id))
+            .forEach(m => this._sessionCbs.get(m.sessionId)?.onMessage(m));
+        } catch { /* ignore */ }
+      }
+    });
+  }
+
+  // ── Stale session pruning ────────────────────────────────────────────────
 
   private _pruneStale(): void {
     const cutoff = Date.now() - LiveChatService.STALE_PENDING_MS;
@@ -36,6 +90,8 @@ export class LiveChatService {
       )
     );
   }
+
+  // ── Computed views ────────────────────────────────────────────────────────
 
   readonly pendingSessions = computed<LiveChatSession[]>(() =>
     [...this._sessions().filter(s => s.status === 'pending')]
@@ -51,7 +107,9 @@ export class LiveChatService {
       .sort((a, b) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime())
   );
 
-  readonly pendingCount = computed(() => this._sessions().filter(s => s.status === 'pending').length);
+  readonly pendingCount = computed(() =>
+    this._sessions().filter(s => s.status === 'pending').length
+  );
 
   getSession(id: string): LiveChatSession | undefined {
     return this._sessions().find(s => s.id === id);
@@ -61,6 +119,8 @@ export class LiveChatService {
     return [...this._messages().filter(m => m.sessionId === sessionId)]
       .sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
   }
+
+  // ── Session lifecycle ─────────────────────────────────────────────────────
 
   createSession(data: {
     customerId?:  string;
@@ -80,6 +140,7 @@ export class LiveChatService {
       openedAt:     new Date().toISOString(),
     };
     this._sessions.update(list => [session, ...list]);
+    // Cross-tab: storage event fires in agent tab; Supabase: broadcast to queue channel
     this._broadcastToQueue('new_session', session);
     return session;
   }
@@ -143,43 +204,60 @@ export class LiveChatService {
       ...msg,
     };
     this._messages.update(list => [...list, message]);
+    // Cross-tab: storage event delivers to other tab; Supabase: broadcast on session channel
     this._broadcastOnSession(message.sessionId, 'message', message);
     return message;
   }
 
-  // ── Supabase Queue ────────────────────────────────────────────────────────
+  // ── Queue subscription (agent side) ──────────────────────────────────────
 
   subscribeToQueue(
     onNewSession:    (s: LiveChatSession) => void,
     onSessionUpdate: (s: LiveChatSession) => void,
   ): () => void {
-    if (!this.sb.isConfigured) return () => {};
+    const entry: QueueEntry = { onNewSession, onSessionUpdate };
+    this._queueCbs.push(entry);
+    const removeLocal = () => {
+      this._queueCbs = this._queueCbs.filter(x => x !== entry);
+    };
+
+    if (!this.sb.isConfigured) return removeLocal;
+
     const existing = this._channels.get('queue');
-    if (existing) return () => { existing.unsubscribe(); };
+    if (existing) {
+      return () => { existing.unsubscribe(); removeLocal(); };
+    }
 
     const channel = this.sb.client.channel('live-chat-queue');
     channel
-      .on('broadcast', { event: 'new_session' },    ({ payload }) => onNewSession(payload as LiveChatSession))
+      .on('broadcast', { event: 'new_session' }, ({ payload }) => {
+        const s = payload as LiveChatSession;
+        this._queueCbs.forEach(cb => cb.onNewSession(s));
+      })
       .on('broadcast', { event: 'session_update' }, ({ payload }) => {
         const s = payload as LiveChatSession;
         this._sessions.update(list => list.map(x => x.id === s.id ? s : x));
-        onSessionUpdate(s);
+        this._queueCbs.forEach(cb => cb.onSessionUpdate(s));
       })
       .subscribe();
     this._channels.set('queue', channel);
-    return () => { channel.unsubscribe(); this._channels.delete('queue'); };
+    return () => { channel.unsubscribe(); this._channels.delete('queue'); removeLocal(); };
   }
 
-  // ── Supabase Session Channel ──────────────────────────────────────────────
+  // ── Session subscription (customer + agent) ───────────────────────────────
 
   subscribeToSession(
     sessionId:       string,
-    onMessage:       (m: LiveChatMessage)  => void,
-    onSessionUpdate: (s: LiveChatSession)  => void,
+    onMessage:       (m: LiveChatMessage)    => void,
+    onSessionUpdate: (s: LiveChatSession)    => void,
     onTyping:        (id: string, t: boolean) => void,
   ): () => void {
-    if (!this.sb.isConfigured) return () => {};
-    if (this._channels.has(`session-${sessionId}`)) return () => {};
+    this._sessionCbs.set(sessionId, { onMessage, onSessionUpdate });
+    const removeLocal = () => this._sessionCbs.delete(sessionId);
+
+    if (!this.sb.isConfigured) return removeLocal;
+
+    if (this._channels.has(`session-${sessionId}`)) return removeLocal;
 
     const channel = this.sb.client.channel(`live-chat-${sessionId}`);
     channel
@@ -203,6 +281,7 @@ export class LiveChatService {
     return () => {
       channel.unsubscribe();
       this._channels.delete(`session-${sessionId}`);
+      removeLocal();
     };
   }
 
@@ -248,5 +327,7 @@ export class LiveChatService {
   unsubscribeAll(): void {
     this._channels.forEach(ch => ch.unsubscribe());
     this._channels.clear();
+    this._queueCbs   = [];
+    this._sessionCbs.clear();
   }
 }
