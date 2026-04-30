@@ -15,11 +15,26 @@ export class LiveChatService {
 
   readonly onlineAgentCount = signal(0);
 
+  /** Pending sessions older than this are auto-abandoned on startup */
+  static readonly STALE_PENDING_MS = 2 * 60 * 60 * 1000; // 2 hours
+
   constructor() {
     this._sessions = signal(this.storage.get<LiveChatSession[]>('live_chat_sessions') ?? []);
     this._messages = signal(this.storage.get<LiveChatMessage[]>('live_chat_messages') ?? []);
     effect(() => { this.storage.set('live_chat_sessions', this._sessions()); });
     effect(() => { this.storage.set('live_chat_messages', this._messages()); });
+    this._pruneStale();
+  }
+
+  private _pruneStale(): void {
+    const cutoff = Date.now() - LiveChatService.STALE_PENDING_MS;
+    this._sessions.update(list =>
+      list.map(s =>
+        s.status === 'pending' && new Date(s.openedAt).getTime() < cutoff
+          ? { ...s, status: 'abandoned' as LiveChatStatus, closedAt: new Date().toISOString() }
+          : s
+      )
+    );
   }
 
   readonly pendingSessions = computed<LiveChatSession[]>(() =>
@@ -101,6 +116,23 @@ export class LiveChatService {
     if (closed) {
       this._broadcastToQueue('session_update', closed);
       this._broadcastOnSession(closed.id, 'session_update', closed);
+    }
+  }
+
+  abandonSession(sessionId: string): void {
+    let abandoned: LiveChatSession | undefined;
+    this._sessions.update(list =>
+      list.map(s => {
+        if (s.id === sessionId && (s.status === 'pending' || s.status === 'active')) {
+          abandoned = { ...s, status: 'abandoned' as LiveChatStatus, closedAt: new Date().toISOString() };
+          return abandoned;
+        }
+        return s;
+      })
+    );
+    if (abandoned) {
+      this._broadcastToQueue('session_update', abandoned);
+      this._broadcastOnSession(abandoned.id, 'session_update', abandoned);
     }
   }
 

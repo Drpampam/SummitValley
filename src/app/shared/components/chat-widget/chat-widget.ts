@@ -19,6 +19,11 @@ type ChatStep =
 
 interface Msg { from: 'bot' | 'user'; text: string; }
 
+/** How long a pending session waits before auto-abandoning (ms) */
+const PENDING_TIMEOUT_MS    = 5 * 60 * 1000;  // 5 min
+/** How long an active chat can be silent before auto-closing (ms) */
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 min
+
 @Component({
   selector: 'app-chat-widget',
   standalone: true,
@@ -27,13 +32,13 @@ interface Msg { from: 'bot' | 'user'; text: string; }
   styleUrl:    './chat-widget.scss',
 })
 export class ChatWidgetComponent implements OnDestroy {
-  private auth       = inject(AuthService);
-  private emailSvc   = inject(EmailService);
-  private ticketSvc  = inject(SupportTicketService);
-  private liveChatSvc = inject(LiveChatService);
+  private auth         = inject(AuthService);
+  private emailSvc     = inject(EmailService);
+  private ticketSvc    = inject(SupportTicketService);
+  private liveChatSvc  = inject(LiveChatService);
 
-  @ViewChild('msgList')     private msgList!:    ElementRef<HTMLElement>;
-  @ViewChild('liveList')    private liveList!:   ElementRef<HTMLElement>;
+  @ViewChild('msgList')      private msgList!:     ElementRef<HTMLElement>;
+  @ViewChild('liveList')     private liveList!:    ElementRef<HTMLElement>;
   @ViewChild('liveMsgInput') private liveMsgInput!: ElementRef<HTMLTextAreaElement>;
 
   isOpen     = signal(false);
@@ -46,16 +51,20 @@ export class ChatWidgetComponent implements OnDestroy {
   guestEmail = signal('');
 
   // Live chat state
-  liveSession    = signal<LiveChatSession | null>(null);
-  liveMessages   = signal<LiveChatMessage[]>([]);
-  liveInput      = signal('');
-  agentTyping    = signal(false);
-  onlineAgents   = this.liveChatSvc.onlineAgentCount;
+  liveSession  = signal<LiveChatSession | null>(null);
+  liveMessages = signal<LiveChatMessage[]>([]);
+  liveInput    = signal('');
+  agentTyping  = signal(false);
+  onlineAgents = this.liveChatSvc.onlineAgentCount;
 
   private _topic    = '';
   private _message  = '';
-  private _unsubSession: (() => void) | null = null;
-  private _typingTimer: ReturnType<typeof setTimeout> | null = null;
+  private _unsubSession:   (() => void) | null = null;
+  private _typingTimer:    ReturnType<typeof setTimeout> | null = null;
+  private _pendingTimer:   ReturnType<typeof setTimeout> | null = null;
+  private _inactivityTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Tracks all bot-reply/delay timeouts so they can be cancelled on destroy */
+  private _pendingTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   readonly isGuest = () => !this.auth.isAuthenticated();
 
@@ -73,12 +82,41 @@ export class ChatWidgetComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this._clearAllTimers();
+    // Close/abandon BEFORE unsubscribing so the broadcast can go through
+    const session = this.liveSession();
+    if (session?.status === 'active')  this.liveChatSvc.closeSession(session.id);
+    if (session?.status === 'pending') this.liveChatSvc.abandonSession(session.id);
     this._unsubSession?.();
-    if (this._typingTimer) clearTimeout(this._typingTimer);
   }
+
+  private _clearAllTimers(): void {
+    if (this._typingTimer)    { clearTimeout(this._typingTimer);    this._typingTimer    = null; }
+    if (this._pendingTimer)   { clearTimeout(this._pendingTimer);   this._pendingTimer   = null; }
+    if (this._inactivityTimer){ clearTimeout(this._inactivityTimer);this._inactivityTimer = null; }
+    this._pendingTimeouts.forEach(t => clearTimeout(t));
+    this._pendingTimeouts = [];
+  }
+
+  // ── Tracked timeout helpers ───────────────────────────────────────────────
+
+  private _setTimeout(fn: () => void, ms: number): ReturnType<typeof setTimeout> {
+    const t = setTimeout(() => {
+      this._pendingTimeouts = this._pendingTimeouts.filter(x => x !== t);
+      fn();
+    }, ms);
+    this._pendingTimeouts.push(t);
+    return t;
+  }
+
+  // ── Widget open/close ─────────────────────────────────────────────────────
 
   toggle(): void {
     if (this.isOpen()) {
+      // Cancel pending live request when customer hides the widget
+      if (this.step() === 'live_waiting') {
+        this.cancelLiveAgent();
+      }
       this.isOpen.set(false);
     } else {
       this.isOpen.set(true);
@@ -86,12 +124,14 @@ export class ChatWidgetComponent implements OnDestroy {
     }
   }
 
+  // ── Bot flow ──────────────────────────────────────────────────────────────
+
   private _start(): void {
     const name = this.auth.user()?.firstName ?? 'there';
     const greeting = this.isGuest()
       ? `👋 Hi there! I'm SVB Assistant — here to help before you even log in.`
       : `👋 Hi ${name}! I'm your SVB Assistant.`;
-    setTimeout(() => {
+    this._setTimeout(() => {
       this.messages.update(m => [...m, { from: 'bot', text: greeting }]);
       this._botReply(`I'm here to help with any questions or issues. Which topic best describes what you need?`, 900);
     }, 250);
@@ -99,21 +139,21 @@ export class ChatWidgetComponent implements OnDestroy {
 
   private _botReply(text: string, delay = 900): void {
     this.isTyping.set(true);
-    setTimeout(() => {
+    this._setTimeout(() => {
       this.isTyping.set(false);
       this.messages.update(m => [...m, { from: 'bot', text }]);
     }, delay);
   }
 
   private _scrollBottom(): void {
-    setTimeout(() => {
+    this._setTimeout(() => {
       if (this.msgList?.nativeElement)
         this.msgList.nativeElement.scrollTop = this.msgList.nativeElement.scrollHeight;
     }, 50);
   }
 
   private _scrollLiveBottom(): void {
-    setTimeout(() => {
+    this._setTimeout(() => {
       if (this.liveList?.nativeElement)
         this.liveList.nativeElement.scrollTop = this.liveList.nativeElement.scrollHeight;
     }, 50);
@@ -200,7 +240,7 @@ export class ChatWidgetComponent implements OnDestroy {
       message:  this._message,
     });
 
-    setTimeout(() => {
+    this._setTimeout(() => {
       this.isTyping.set(false);
       const sla = priority === 'urgent' ? '4 business hours' : '1–2 business days';
       this.messages.update(m => [...m,
@@ -220,7 +260,7 @@ export class ChatWidgetComponent implements OnDestroy {
   }
 
   confirmLiveAgent(): void {
-    const user = this.auth.user();
+    const user  = this.auth.user();
     const name  = user ? `${user.firstName} ${user.lastName}` : this.guestName();
     const email = user?.email ?? this.guestEmail();
 
@@ -237,32 +277,38 @@ export class ChatWidgetComponent implements OnDestroy {
     this.step.set('live_waiting');
     this._scrollBottom();
 
-    // Subscribe to this session's channel
+    // Start pending timeout — if no agent accepts within 5 min, auto-abandon
+    this._startPendingTimeout();
+
     this._unsubSession = this.liveChatSvc.subscribeToSession(
       session.id,
       (msg) => {
-        // Only add messages from the other side
         if (msg.senderType !== 'customer') {
           this.liveMessages.update(list => [...list, msg]);
+          this._resetInactivityTimer();
           this._scrollLiveBottom();
         }
       },
       (updated) => {
         this.liveSession.set(updated);
         if (updated.status === 'active' && this.step() === 'live_waiting') {
+          if (this._pendingTimer) { clearTimeout(this._pendingTimer); this._pendingTimer = null; }
           this.step.set('live_chat');
+          this._startInactivityTimer();
           this._scrollLiveBottom();
         }
-        if (updated.status === 'closed') {
+        if (updated.status === 'closed' || updated.status === 'abandoned') {
+          this._clearLiveTimers();
           this.step.set('done');
           this.caseRef.set(updated.id.slice(4, 12).toUpperCase());
+          this._scrollBottom();
         }
       },
       (userId, typing) => {
         if (userId !== (user?.id ?? 'guest')) {
           this.agentTyping.set(typing);
           if (typing) {
-            setTimeout(() => this.agentTyping.set(false), 5000);
+            this._setTimeout(() => this.agentTyping.set(false), 5000);
           }
         }
       },
@@ -270,10 +316,12 @@ export class ChatWidgetComponent implements OnDestroy {
   }
 
   cancelLiveAgent(): void {
+    this._clearLiveTimers();
+    // Abandon BEFORE unsubscribing so the broadcast goes through
+    const session = this.liveSession();
+    if (session) this.liveChatSvc.abandonSession(session.id);
     this._unsubSession?.();
     this._unsubSession = null;
-    const session = this.liveSession();
-    if (session) this.liveChatSvc.closeSession(session.id);
     this.liveSession.set(null);
     this.step.set(this._message ? 'priority' : 'greeting');
     this._scrollBottom();
@@ -316,10 +364,12 @@ export class ChatWidgetComponent implements OnDestroy {
     this.liveInput.set('');
     if (this._typingTimer) clearTimeout(this._typingTimer);
     this.liveChatSvc.broadcastTyping(session.id, senderId, false);
+    this._resetInactivityTimer();
     this._scrollLiveBottom();
   }
 
   endLiveChat(): void {
+    this._clearLiveTimers();
     const session = this.liveSession();
     if (session) this.liveChatSvc.closeSession(session.id);
     this._unsubSession?.();
@@ -330,6 +380,7 @@ export class ChatWidgetComponent implements OnDestroy {
   }
 
   startOver(): void {
+    this._clearLiveTimers();
     this._unsubSession?.();
     this._unsubSession = null;
     this.messages.set([]);
@@ -344,5 +395,65 @@ export class ChatWidgetComponent implements OnDestroy {
     this.liveMessages.set([]);
     this.liveInput.set('');
     this._start();
+  }
+
+  // ── Session timeout management ────────────────────────────────────────────
+
+  private _startPendingTimeout(): void {
+    if (this._pendingTimer) clearTimeout(this._pendingTimer);
+    this._pendingTimer = setTimeout(() => this._onPendingTimeout(), PENDING_TIMEOUT_MS);
+  }
+
+  private _onPendingTimeout(): void {
+    this._pendingTimer = null;
+    if (this.step() !== 'live_waiting') return;
+    const session = this.liveSession();
+    if (session) {
+      this.liveChatSvc.abandonSession(session.id);
+      this._unsubSession?.();
+      this._unsubSession = null;
+    }
+    this.liveSession.set(null);
+    // Offer ticket fallback in the bot conversation
+    this.messages.update(m => [...m, {
+      from: 'bot' as const,
+      text: `⏱️ No agents are available right now. Your request has been queued — we'll create a support ticket so the team can follow up with you.`,
+    }]);
+    this.step.set(this._message ? 'priority' : 'greeting');
+    this._scrollBottom();
+  }
+
+  private _startInactivityTimer(): void {
+    if (this._inactivityTimer) clearTimeout(this._inactivityTimer);
+    this._inactivityTimer = setTimeout(() => this._onInactivityTimeout(), INACTIVITY_TIMEOUT_MS);
+  }
+
+  private _resetInactivityTimer(): void {
+    if (this.step() === 'live_chat') this._startInactivityTimer();
+  }
+
+  private _onInactivityTimeout(): void {
+    this._inactivityTimer = null;
+    if (this.step() !== 'live_chat') return;
+    const session = this.liveSession();
+    if (!session) return;
+    // Inject a system message then close
+    this.liveMessages.update(list => [...list, {
+      id:         'sys-inactivity-' + Date.now(),
+      sessionId:  session.id,
+      senderType: 'system' as const,
+      senderId:   'system',
+      senderName: 'System',
+      text:       'This session was automatically closed after 15 minutes of inactivity.',
+      sentAt:     new Date().toISOString(),
+    }]);
+    this._scrollLiveBottom();
+    this.endLiveChat();
+  }
+
+  private _clearLiveTimers(): void {
+    if (this._pendingTimer)    { clearTimeout(this._pendingTimer);    this._pendingTimer    = null; }
+    if (this._inactivityTimer) { clearTimeout(this._inactivityTimer); this._inactivityTimer = null; }
+    if (this._typingTimer)     { clearTimeout(this._typingTimer);     this._typingTimer     = null; }
   }
 }

@@ -50,9 +50,12 @@ export class SupportComponent implements OnInit, OnDestroy {
   liveMsgs           = signal<LiveChatMessage[]>([]);
   liveInput          = signal('');
   customerTyping     = signal(false);
-  private _unsubSession: (() => void) | null = null;
-  private _unsubQueue:   (() => void) | null = null;
-  private _typingTimer:  ReturnType<typeof setTimeout> | null = null;
+  private _unsubSession:       (() => void) | null = null;
+  private _unsubQueue:         (() => void) | null = null;
+  private _typingTimer:        ReturnType<typeof setTimeout> | null = null;
+  private _inactivityTimer:    ReturnType<typeof setTimeout> | null = null;
+  /** Agent-side inactivity close: 20 min of no messages ends the session */
+  private readonly INACTIVITY_MS = 20 * 60 * 1000;
 
   readonly pendingLive  = computed(() => this.liveSvc.pendingSessions());
   readonly activeLive   = computed(() => this.liveSvc.activeSessions());
@@ -75,9 +78,13 @@ export class SupportComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this._typingTimer)     clearTimeout(this._typingTimer);
+    if (this._inactivityTimer) clearTimeout(this._inactivityTimer);
+    // Close active session before channels are torn down so the broadcast reaches the customer
+    const session = this.activeLiveSession();
+    if (session) this.liveSvc.closeSession(session.id);
     this._unsubQueue?.();
     this._unsubSession?.();
-    if (this._typingTimer) clearTimeout(this._typingTimer);
     this.liveSvc.unsubscribeAll();
   }
 
@@ -102,11 +109,13 @@ export class SupportComponent implements OnInit, OnDestroy {
       accepted.id,
       (msg) => {
         this.liveMsgs.update(list => [...list, msg]);
+        this._resetInactivity();
         this._scrollLiveBottom();
       },
       (updated) => {
         this.activeLiveSession.set(updated.status === 'active' ? updated : null);
         if (updated.status === 'closed' || updated.status === 'abandoned') {
+          if (this._inactivityTimer) { clearTimeout(this._inactivityTimer); this._inactivityTimer = null; }
           this.toast.info('Customer ended the chat.');
           this.activeLiveSession.set(null);
         }
@@ -122,6 +131,7 @@ export class SupportComponent implements OnInit, OnDestroy {
         }
       },
     );
+    this._startInactivity();
     this.toast.success(`You are now chatting with ${this._resolveCustomerName(accepted.customerId) || accepted.guestName || 'the customer'}`);
   }
 
@@ -159,10 +169,12 @@ export class SupportComponent implements OnInit, OnDestroy {
     this.liveInput.set('');
     if (this._typingTimer) clearTimeout(this._typingTimer);
     this.liveSvc.broadcastTyping(session.id, user.id, false);
+    this._resetInactivity();
     this._scrollLiveBottom();
   }
 
   closeLiveSession(): void {
+    if (this._inactivityTimer) { clearTimeout(this._inactivityTimer); this._inactivityTimer = null; }
     const session = this.activeLiveSession();
     if (session) this.liveSvc.closeSession(session.id);
     this._unsubSession?.();
@@ -185,6 +197,22 @@ export class SupportComponent implements OnInit, OnDestroy {
   liveWaitTime(openedAt: string): string {
     const mins = Math.floor((Date.now() - new Date(openedAt).getTime()) / 60000);
     return mins < 1 ? 'Just now' : `${mins}m ago`;
+  }
+
+  private _startInactivity(): void {
+    if (this._inactivityTimer) clearTimeout(this._inactivityTimer);
+    this._inactivityTimer = setTimeout(() => this._onInactivityTimeout(), this.INACTIVITY_MS);
+  }
+
+  private _resetInactivity(): void {
+    if (this.activeLiveSession()) this._startInactivity();
+  }
+
+  private _onInactivityTimeout(): void {
+    this._inactivityTimer = null;
+    if (!this.activeLiveSession()) return;
+    this.toast.info('Session closed: 20 minutes without activity.');
+    this.closeLiveSession();
   }
 
   private _resolveCustomerName(customerId?: string): string {
