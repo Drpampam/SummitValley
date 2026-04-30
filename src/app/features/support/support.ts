@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,15 +8,17 @@ import { AccountService } from '../../core/services/account.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { DisputeService } from '../../core/services/dispute.service';
 import { SupportTicketService } from '../../core/services/support-ticket.service';
+import { LiveChatService } from '../../core/services/live-chat.service';
 import { LocaleService } from '../../core/services/locale.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Dispute, DisputeStatus } from '../../core/models/dispute.model';
 import { SupportTicket, TicketStatus } from '../../core/models/support-ticket.model';
+import { LiveChatSession, LiveChatMessage } from '../../core/models/live-chat.model';
 import { Transaction } from '../../core/models/transaction.model';
 import { Account } from '../../core/models/account.model';
 import { User } from '../../core/models/user.model';
 
-type SupportTab = 'customers' | 'tickets' | 'disputes' | 'transactions';
+type SupportTab = 'live' | 'customers' | 'tickets' | 'disputes' | 'transactions';
 
 @Component({
   selector: 'app-support',
@@ -25,16 +27,17 @@ type SupportTab = 'customers' | 'tickets' | 'disputes' | 'transactions';
   templateUrl: './support.html',
   styleUrl: './support.scss',
 })
-export class SupportComponent {
-  private auth       = inject(AuthService);
-  private accountSvc = inject(AccountService);
-  private txnSvc     = inject(TransactionService);
-  private disputeSvc = inject(DisputeService);
-  private ticketSvc  = inject(SupportTicketService);
-  localeService      = inject(LocaleService);
-  private toast      = inject(ToastService);
+export class SupportComponent implements OnInit, OnDestroy {
+  private auth        = inject(AuthService);
+  private accountSvc  = inject(AccountService);
+  private txnSvc      = inject(TransactionService);
+  private disputeSvc  = inject(DisputeService);
+  private ticketSvc   = inject(SupportTicketService);
+  private liveSvc     = inject(LiveChatService);
+  localeService       = inject(LocaleService);
+  private toast       = inject(ToastService);
 
-  activeTab       = signal<SupportTab>('tickets');
+  activeTab       = signal<SupportTab>('live');
   customerSearch  = signal('');
   ticketFilter    = signal<TicketStatus | 'all'>('all');
   disputeFilter   = signal<DisputeStatus | 'all'>('all');
@@ -42,7 +45,160 @@ export class SupportComponent {
   expandedRow     = signal<string | null>(null);
   resettingPwd    = signal<string | null>(null);
 
+  // ── Live Chat ─────────────────────────────────────────────────────────────
+  activeLiveSession  = signal<LiveChatSession | null>(null);
+  liveMsgs           = signal<LiveChatMessage[]>([]);
+  liveInput          = signal('');
+  customerTyping     = signal(false);
+  private _unsubSession: (() => void) | null = null;
+  private _unsubQueue:   (() => void) | null = null;
+  private _typingTimer:  ReturnType<typeof setTimeout> | null = null;
+
+  readonly pendingLive  = computed(() => this.liveSvc.pendingSessions());
+  readonly activeLive   = computed(() => this.liveSvc.activeSessions());
+  readonly liveOpenCount = computed(() => this.liveSvc.pendingCount());
+
   readonly agent = computed(() => this.auth.user());
+
+  ngOnInit(): void {
+    const user = this.auth.user();
+    if (!user) return;
+    // Track presence so customers see agents online
+    this.liveSvc.subscribeToAgentPresence(user.id, `${user.firstName} ${user.lastName}`);
+    // Listen for new sessions
+    this._unsubQueue = this.liveSvc.subscribeToQueue(
+      (session) => {
+        this.toast.info(`💬 New live chat from ${session.guestName ?? this._resolveCustomerName(session.customerId)}`);
+      },
+      () => {},
+    );
+  }
+
+  ngOnDestroy(): void {
+    this._unsubQueue?.();
+    this._unsubSession?.();
+    if (this._typingTimer) clearTimeout(this._typingTimer);
+    this.liveSvc.unsubscribeAll();
+  }
+
+  // ── Live Chat methods ─────────────────────────────────────────────────────
+
+  acceptLiveSession(session: LiveChatSession): void {
+    const user = this.auth.user();
+    if (!user) return;
+    const accepted = this.liveSvc.acceptSession(session.id, user.id, `${user.firstName} ${user.lastName}`);
+    if (!accepted) return;
+
+    // Unsubscribe from previous session if any
+    this._unsubSession?.();
+
+    this.activeLiveSession.set(accepted);
+    this.liveMsgs.set(this.liveSvc.getMessages(accepted.id));
+    this.liveInput.set('');
+    this.customerTyping.set(false);
+    this.activeTab.set('live');
+
+    this._unsubSession = this.liveSvc.subscribeToSession(
+      accepted.id,
+      (msg) => {
+        this.liveMsgs.update(list => [...list, msg]);
+        this._scrollLiveBottom();
+      },
+      (updated) => {
+        this.activeLiveSession.set(updated.status === 'active' ? updated : null);
+        if (updated.status === 'closed' || updated.status === 'abandoned') {
+          this.toast.info('Customer ended the chat.');
+          this.activeLiveSession.set(null);
+        }
+      },
+      (userId, typing) => {
+        const customerId = accepted.customerId ?? 'guest';
+        if (userId !== user.id && userId !== customerId + '_agent') {
+          this.customerTyping.set(typing);
+          if (typing) {
+            if (this._typingTimer) clearTimeout(this._typingTimer);
+            this._typingTimer = setTimeout(() => this.customerTyping.set(false), 5000);
+          }
+        }
+      },
+    );
+    this.toast.success(`You are now chatting with ${this._resolveCustomerName(accepted.customerId) || accepted.guestName || 'the customer'}`);
+  }
+
+  onLiveInput(e: Event): void {
+    const val = (e.target as HTMLTextAreaElement).value;
+    this.liveInput.set(val);
+    const session = this.activeLiveSession();
+    const user    = this.auth.user();
+    if (!session || !user) return;
+    this.liveSvc.broadcastTyping(session.id, user.id, val.length > 0);
+    if (this._typingTimer) clearTimeout(this._typingTimer);
+    this._typingTimer = setTimeout(() =>
+      this.liveSvc.broadcastTyping(session.id, user.id, false), 3000
+    );
+  }
+
+  onLiveKeyDown(e: KeyboardEvent): void {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendAgentMessage(); }
+  }
+
+  sendAgentMessage(): void {
+    const text    = this.liveInput().trim();
+    const session = this.activeLiveSession();
+    const user    = this.auth.user();
+    if (!text || !session || !user) return;
+
+    const msg = this.liveSvc.addMessage({
+      sessionId:  session.id,
+      senderType: 'agent',
+      senderId:   user.id,
+      senderName: `${user.firstName} ${user.lastName}`,
+      text,
+    });
+    this.liveMsgs.update(list => [...list, msg]);
+    this.liveInput.set('');
+    if (this._typingTimer) clearTimeout(this._typingTimer);
+    this.liveSvc.broadcastTyping(session.id, user.id, false);
+    this._scrollLiveBottom();
+  }
+
+  closeLiveSession(): void {
+    const session = this.activeLiveSession();
+    if (session) this.liveSvc.closeSession(session.id);
+    this._unsubSession?.();
+    this._unsubSession = null;
+    this.activeLiveSession.set(null);
+    this.liveMsgs.set([]);
+    this.toast.info('Live chat session closed.');
+  }
+
+  liveCustomerName(session: LiveChatSession): string {
+    return session.guestName ?? this._resolveCustomerName(session.customerId) ?? 'Customer';
+  }
+
+  liveCustomerInitials(session: LiveChatSession): string {
+    const name = this.liveCustomerName(session);
+    const parts = name.split(' ');
+    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase();
+  }
+
+  liveWaitTime(openedAt: string): string {
+    const mins = Math.floor((Date.now() - new Date(openedAt).getTime()) / 60000);
+    return mins < 1 ? 'Just now' : `${mins}m ago`;
+  }
+
+  private _resolveCustomerName(customerId?: string): string {
+    if (!customerId) return '';
+    const u = this.auth.allUsersReactive().find(u => u.id === customerId);
+    return u ? `${u.firstName} ${u.lastName}` : customerId;
+  }
+
+  private _scrollLiveBottom(): void {
+    setTimeout(() => {
+      const el = document.querySelector('.live-chat-msgs');
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 50);
+  }
 
   // ── Stats ─────────────────────────────────────────────────────────────────
 

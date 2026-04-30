@@ -34,6 +34,15 @@
 
   <!-- ══ Tab Bar ══════════════════════════════════════════════════════════════ -->
   <div class="sp-tabs">
+    <button class="sp-tab" [class.sp-tab-active]="activeTab() === 'live'" (click)="activeTab.set('live')">
+      <mat-icon>forum</mat-icon>
+      <span>Live Chat</span>
+      @if (liveOpenCount() > 0) {
+        <span class="sp-tab-count sp-tab-count-warn">{{ liveOpenCount() }}</span>
+      } @else {
+        <span class="sp-tab-count">{{ pendingLive().length + activeLive().length }}</span>
+      }
+    </button>
     <button class="sp-tab" [class.sp-tab-active]="activeTab() === 'tickets'" (click)="activeTab.set('tickets')">
       <mat-icon>chat</mat-icon>
       <span>Chat Requests</span>
@@ -62,6 +71,165 @@
       <span>Transactions</span>
     </button>
   </div>
+
+  <!-- ══ LIVE CHAT ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'live') {
+    <div class="sp-panel sp-live-panel">
+
+      <!-- Left: pending queue -->
+      <div class="live-queue-col">
+        <div class="live-queue-header">
+          <mat-icon>pending</mat-icon>
+          <span>Pending Queue</span>
+          @if (liveOpenCount() > 0) {
+            <span class="live-queue-badge">{{ liveOpenCount() }}</span>
+          }
+        </div>
+
+        @if (pendingLive().length === 0 && activeLive().length === 0) {
+          <div class="live-queue-empty">
+            <mat-icon>mark_chat_read</mat-icon>
+            <p>No active sessions right now</p>
+          </div>
+        }
+
+        @for (session of pendingLive(); track session.id) {
+          <div class="live-queue-card" [class.live-queue-card-active]="activeLiveSession()?.id === session.id">
+            <div class="live-queue-avatar">{{ liveCustomerInitials(session) }}</div>
+            <div class="live-queue-info">
+              <p class="live-queue-name">{{ liveCustomerName(session) }}</p>
+              <p class="live-queue-topic">{{ session.topic }}</p>
+              @if (session.priorContext) {
+                <p class="live-queue-context">"{{ session.priorContext }}"</p>
+              }
+              <p class="live-queue-wait">
+                <mat-icon>schedule</mat-icon> {{ liveWaitTime(session.openedAt) }}
+              </p>
+            </div>
+            <button
+              class="live-accept-btn"
+              (click)="acceptLiveSession(session)"
+              [disabled]="activeLiveSession() !== null"
+              matTooltip="Accept this chat session"
+            >
+              <mat-icon>chat</mat-icon>
+              Accept
+            </button>
+          </div>
+        }
+
+        @for (session of activeLive(); track session.id) {
+          <div class="live-queue-card live-queue-card-ongoing" [class.live-queue-card-active]="activeLiveSession()?.id === session.id">
+            <div class="live-queue-avatar live-avatar-green">{{ liveCustomerInitials(session) }}</div>
+            <div class="live-queue-info">
+              <p class="live-queue-name">{{ liveCustomerName(session) }}</p>
+              <p class="live-queue-topic">{{ session.topic }}</p>
+              <p class="live-queue-wait live-ongoing-badge">
+                <mat-icon>chat_bubble</mat-icon> In progress · {{ session.agentName }}
+              </p>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Right: active chat window -->
+      <div class="live-chat-col">
+        @if (activeLiveSession(); as session) {
+
+          <!-- Chat header -->
+          <div class="live-chat-header">
+            <div class="live-chat-avatar">{{ liveCustomerInitials(session) }}</div>
+            <div>
+              <p class="live-chat-name">{{ liveCustomerName(session) }}</p>
+              <p class="live-chat-topic">{{ session.topic }}
+                @if (session.priorContext) { · "{{ session.priorContext }}" }
+              </p>
+            </div>
+            <button class="sp-action-btn sp-btn-red live-end-btn" (click)="closeLiveSession()" matTooltip="End this chat session">
+              <mat-icon>call_end</mat-icon> End Chat
+            </button>
+          </div>
+
+          <!-- Messages -->
+          <div class="live-chat-msgs">
+
+            <!-- Prior context pill -->
+            @if (session.priorContext) {
+              <div class="live-context-banner">
+                <mat-icon>history</mat-icon>
+                Customer's prior message: "{{ session.priorContext }}"
+              </div>
+            }
+
+            @for (msg of liveMsgs(); track msg.id) {
+              <div class="live-msg-row" [class.live-msg-agent]="msg.senderType === 'agent'" [class.live-msg-system]="msg.senderType === 'system'">
+                @if (msg.senderType === 'system') {
+                  <div class="live-sys-msg">
+                    <mat-icon>info</mat-icon>{{ msg.text }}
+                  </div>
+                } @else {
+                  @if (msg.senderType === 'customer') {
+                    <div class="live-cust-avatar">{{ liveCustomerInitials(session) }}</div>
+                  }
+                  <div class="live-bubble" [class.live-bubble-agent]="msg.senderType === 'agent'" [class.live-bubble-customer]="msg.senderType === 'customer'">
+                    {{ msg.text }}
+                    <span class="live-msg-time">{{ fmtDate(msg.sentAt) }}</span>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (customerTyping()) {
+              <div class="live-msg-row">
+                <div class="live-cust-avatar">{{ liveCustomerInitials(session) }}</div>
+                <div class="live-bubble live-bubble-customer live-typing-bubble">
+                  <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                </div>
+              </div>
+            }
+
+            @if (liveMsgs().length === 0 && !customerTyping()) {
+              <div class="live-chat-waiting">
+                <mat-icon>chat_bubble_outline</mat-icon>
+                <p>You joined the chat. Say hello!</p>
+              </div>
+            }
+          </div>
+
+          <!-- Input -->
+          <div class="live-chat-input-area">
+            <textarea
+              class="live-chat-textarea"
+              rows="2"
+              placeholder="Type a message… (Enter to send)"
+              [value]="liveInput()"
+              (input)="onLiveInput($event)"
+              (keydown)="onLiveKeyDown($event)"
+            ></textarea>
+            <button
+              class="live-send-btn"
+              [disabled]="liveInput().trim().length === 0"
+              (click)="sendAgentMessage()"
+            >
+              <mat-icon>send</mat-icon>
+            </button>
+          </div>
+
+        } @else {
+
+          <div class="live-chat-placeholder">
+            <mat-icon>support_agent</mat-icon>
+            <p>Select a pending session from the queue to start chatting</p>
+            @if (pendingLive().length === 0) {
+              <p class="live-placeholder-sub">No customers are waiting right now. Requests will appear automatically.</p>
+            }
+          </div>
+
+        }
+      </div>
+
+    </div>
+  }
 
   <!-- ══ CHAT REQUESTS ═══════════════════════════════════════════════════════ -->
   @if (activeTab() === 'tickets') {

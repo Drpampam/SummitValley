@@ -489,6 +489,263 @@ $amber:    #f59e0b;
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 1s linear infinite; }
+.spin-slow { animation: spin 2s linear infinite; }
+
+// ── Live Agent Button (in greeting + message steps) ───────────────────────────
+.live-agent-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid rgba($primary, .25);
+  border-radius: 12px;
+  background: rgba($primary, .04);
+  color: $primary;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  mat-icon { font-size: 17px; width: 17px; height: 17px; }
+  &:hover { border-color: $primary; background: rgba($primary, .08); }
+
+  .agents-online {
+    margin-left: auto;
+    background: rgba($green, .15);
+    color: #059669;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+}
+
+.message-step-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.live-agent-inline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: $primary;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+  &:hover { background: rgba($primary, .06); }
+}
+
+// ── Live request confirmation card ────────────────────────────────────────────
+.live-request-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 8px 4px 4px;
+}
+
+.live-req-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $primary, $accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  mat-icon { color: #fff; font-size: 24px; width: 24px; height: 24px; }
+}
+
+.live-req-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: $text;
+}
+
+.live-req-sub {
+  margin: 0;
+  font-size: 12px;
+  color: $muted;
+}
+
+.live-req-btns {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.live-req-yes {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, $primary, $accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  &:hover { opacity: .88; }
+}
+
+.live-req-no {
+  flex: 1;
+  padding: 10px;
+  border: 1.5px solid $border;
+  border-radius: 10px;
+  background: $bg;
+  color: $muted;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  &:hover { border-color: $accent; color: $accent; }
+}
+
+// ── Live waiting state ────────────────────────────────────────────────────────
+.live-waiting-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px;
+  gap: 10px;
+  text-align: center;
+}
+
+.live-waiting-spinner {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $primary, $accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  mat-icon { color: #fff; font-size: 28px; width: 28px; height: 28px; }
+}
+
+.live-waiting-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: $text;
+}
+
+.live-waiting-sub {
+  margin: 0;
+  font-size: 12px;
+  color: $muted;
+}
+
+.cancel-wait-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border: 1.5px solid $border;
+  border-radius: 20px;
+  background: $bg;
+  color: $muted;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all .15s;
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+  &:hover { border-color: $accent; color: $accent; }
+}
+
+// ── Live agent avatar (header + messages) ─────────────────────────────────────
+.live-agent-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  background: rgba(#fff, .25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.live-agent-avatar-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.status-amber { background: $amber !important; box-shadow: 0 0 6px $amber !important; }
+
+// ── Live system message ───────────────────────────────────────────────────────
+.live-system-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  color: $muted;
+  padding: 6px 0;
+  mat-icon { font-size: 13px; width: 13px; height: 13px; color: $green; }
+
+  &.full-width { width: 100%; text-align: center; }
+}
+
+.live-context-pill {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  background: rgba($primary, .05);
+  border: 1px solid rgba($primary, .15);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: $primary;
+  margin-bottom: 4px;
+  mat-icon { font-size: 13px; width: 13px; height: 13px; flex-shrink: 0; margin-top: 1px; }
+  span { line-height: 1.4; }
+}
+
+// ── End chat button ───────────────────────────────────────────────────────────
+.end-chat-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  padding: 8px;
+  border: 1.5px solid rgba($accent, .3);
+  border-radius: 10px;
+  background: rgba($accent, .04);
+  color: $accent;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+  &:hover { border-color: $accent; background: rgba($accent, .08); }
+}
 
 // Powered by footer
 .chat-powered {
