@@ -71,15 +71,17 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   private _unsubLiveQueue: (() => void) | null = null;
 
-  /** Pending live chat count — shown as badge on the Support Console nav item for CS agents */
-  readonly pendingLiveCount = computed(() =>
-    this.auth.user()?.role === 'customer_service' ? this.liveSvc.pendingCount() : 0
-  );
+  /** Pending live chat count — shown as badge on the Support Console nav item for CS agents and Admin Console for admins */
+  readonly pendingLiveCount = computed(() => {
+    const role = this.auth.user()?.role;
+    return (role === 'customer_service' || role === 'admin') ? this.liveSvc.pendingCount() : 0;
+  });
 
   ngOnInit(): void {
     this.sessionSvc.start(() => this.auth.logout());
-    // CS agents get new-session notifications wherever they are in the app
-    if (this.auth.user()?.role === 'customer_service') {
+    // CS agents and admins get new-session notifications wherever they are in the app
+    const role = this.auth.user()?.role;
+    if (role === 'customer_service' || role === 'admin') {
       this._unsubLiveQueue = this.liveSvc.subscribeToQueue(
         (session) => {
           const who = session.guestName ?? session.customerId ?? 'A customer';

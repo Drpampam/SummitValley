@@ -21,7 +21,9 @@ import { SupportTicketService } from '../../core/services/support-ticket.service
 import { EmailService } from '../../core/services/email.service';
 import { LocaleService } from '../../core/services/locale.service';
 import { ToastService } from '../../core/services/toast.service';
+import { LiveChatService } from '../../core/services/live-chat.service';
 import { User, UserRole } from '../../core/models/user.model';
+import { LiveChatSession } from '../../core/models/live-chat.model';
 import { Transaction, TransactionStatus, TransactionPolicy, PolicyRuleType } from '../../core/models/transaction.model';
 import { Account } from '../../core/models/account.model';
 import { Dispute, DisputeStatus } from '../../core/models/dispute.model';
@@ -58,6 +60,7 @@ export class AdminComponent {
   private emailSvc    = inject(EmailService);
   private fb          = inject(FormBuilder);
   private toast       = inject(ToastService);
+  liveSvc             = inject(LiveChatService);
 
   // ── Filters ───────────────────────────────────────────────────────────────
   filterUserId  = signal<string>('');
@@ -685,6 +688,40 @@ export class AdminComponent {
   fmtDate(iso: string): string {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  // ── Live Chat Monitoring ──────────────────────────────────────────────────
+
+  readonly pendingLiveSessions = computed(() => this.liveSvc.pendingSessions());
+  readonly activeLiveSessions  = computed(() => this.liveSvc.activeSessions());
+  readonly liveChatStats = computed(() => ({
+    pending: this.pendingLiveSessions().length,
+    active:  this.activeLiveSessions().length,
+  }));
+
+  liveCustomerName(session: LiveChatSession): string {
+    if (session.customerId) {
+      const u = this._getUser(session.customerId);
+      if (u) return `${u.firstName} ${u.lastName}`;
+    }
+    return session.guestName ?? 'Guest';
+  }
+
+  liveInitials(session: LiveChatSession): string {
+    const name = this.liveCustomerName(session);
+    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  liveWaitTime(isoTime: string): string {
+    const min = Math.floor((Date.now() - new Date(isoTime).getTime()) / 60000);
+    if (min < 1) return 'Just now';
+    if (min === 1) return '1 min';
+    return `${min} mins`;
+  }
+
+  forceCloseSession(sessionId: string): void {
+    this.liveSvc.closeSession(sessionId);
+    this.toast.info('Live chat session closed by admin');
   }
 
 }

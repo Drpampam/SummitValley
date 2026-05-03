@@ -1129,11 +1129,11 @@
       </div>
     </mat-tab>
 
-    <!-- ── Tab 6: Chat Requests ───────────────────────────────────────────────── -->
+    <!-- ── Tab 6: Support Tickets ──────────────────────────────────────────────── -->
     <mat-tab>
       <ng-template mat-tab-label>
-        <mat-icon class="tab-icon">chat</mat-icon>
-        Chat Requests
+        <mat-icon class="tab-icon">confirmation_number</mat-icon>
+        Support Tickets
         @if (ticketCounts().open + ticketCounts().in_progress > 0) {
           <span class="tab-badge warn">{{ ticketCounts().open + ticketCounts().in_progress }} open</span>
         }
@@ -1160,8 +1160,8 @@
 
         @if (allTickets().length === 0) {
           <div class="admin-empty-state">
-            <mat-icon>chat_bubble_outline</mat-icon>
-            <p>No chat requests yet. They appear here when customers submit via the chat widget.</p>
+            <mat-icon>confirmation_number</mat-icon>
+            <p>No support tickets yet. They appear here when customers submit via the chat widget.</p>
           </div>
         } @else {
           <table mat-table [dataSource]="filteredTickets()" class="admin-table">
@@ -1253,6 +1253,131 @@
             <tr mat-header-row *matHeaderRowDef="['ref','from','category','message','priority','submitted','status','actions']"></tr>
             <tr mat-row *matRowDef="let row; columns: ['ref','from','category','message','priority','submitted','status','actions']"></tr>
           </table>
+        }
+
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 7: Live Chat ─────────────────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">support_agent</mat-icon>
+        Live Chat
+        @if (liveChatStats().pending > 0) {
+          <span class="tab-badge warn">{{ liveChatStats().pending }} waiting</span>
+        }
+      </ng-template>
+
+      <div class="tab-body">
+
+        <!-- Stats row -->
+        <div class="lc-stats-row">
+          <div class="lc-stat-card pending">
+            <div class="lc-stat-icon"><mat-icon>hourglass_top</mat-icon></div>
+            <div class="lc-stat-info">
+              <p class="lc-stat-num">{{ liveChatStats().pending }}</p>
+              <p class="lc-stat-label">Waiting</p>
+            </div>
+          </div>
+          <div class="lc-stat-card active">
+            <div class="lc-stat-icon"><mat-icon>chat</mat-icon></div>
+            <div class="lc-stat-info">
+              <p class="lc-stat-num">{{ liveChatStats().active }}</p>
+              <p class="lc-stat-label">Active</p>
+            </div>
+          </div>
+          <div class="lc-stat-card total">
+            <div class="lc-stat-icon"><mat-icon>people</mat-icon></div>
+            <div class="lc-stat-info">
+              <p class="lc-stat-num">{{ liveSvc.onlineAgentCount() }}</p>
+              <p class="lc-stat-label">Agents Online</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pending queue -->
+        <div class="lc-section-label">
+          <mat-icon>hourglass_top</mat-icon>
+          Waiting for Agent
+        </div>
+
+        @if (pendingLiveSessions().length === 0) {
+          <div class="admin-empty-state lc-empty">
+            <mat-icon>check_circle_outline</mat-icon>
+            <p>No customers waiting right now.</p>
+          </div>
+        } @else {
+          <div class="lc-session-list">
+            @for (s of pendingLiveSessions(); track s.id) {
+              <div class="lc-session-card pending-card">
+                <div class="lc-session-avatar">{{ liveInitials(s) }}</div>
+                <div class="lc-session-info">
+                  <p class="lc-session-name">{{ liveCustomerName(s) }}</p>
+                  <p class="lc-session-meta">
+                    <span class="lc-topic-pill">{{ s.topic }}</span>
+                    <span class="lc-wait-time">
+                      <mat-icon>schedule</mat-icon>
+                      {{ liveWaitTime(s.openedAt) }}
+                    </span>
+                  </p>
+                  @if (s.priorContext) {
+                    <p class="lc-context">"{{ s.priorContext }}"</p>
+                  }
+                </div>
+                <div class="lc-session-actions">
+                  <span class="lc-status-pill waiting">Waiting</span>
+                  <button mat-stroked-button class="action-btn red-btn lc-close-btn" (click)="forceCloseSession(s.id)" matTooltip="Force close this session">
+                    <mat-icon>close</mat-icon>
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Active sessions -->
+        <div class="lc-section-label" style="margin-top: 24px;">
+          <mat-icon>chat</mat-icon>
+          Active Sessions
+        </div>
+
+        @if (activeLiveSessions().length === 0) {
+          <div class="admin-empty-state lc-empty">
+            <mat-icon>forum</mat-icon>
+            <p>No active live chat sessions at the moment.</p>
+          </div>
+        } @else {
+          <div class="lc-session-list">
+            @for (s of activeLiveSessions(); track s.id) {
+              <div class="lc-session-card active-card">
+                <div class="lc-session-avatar active-avatar">{{ liveInitials(s) }}</div>
+                <div class="lc-session-info">
+                  <p class="lc-session-name">{{ liveCustomerName(s) }}</p>
+                  <p class="lc-session-meta">
+                    <span class="lc-topic-pill">{{ s.topic }}</span>
+                    @if (s.agentName) {
+                      <span class="lc-agent-pill">
+                        <mat-icon>support_agent</mat-icon>
+                        {{ s.agentName }}
+                      </span>
+                    }
+                    <span class="lc-wait-time">
+                      <mat-icon>schedule</mat-icon>
+                      {{ liveWaitTime(s.acceptedAt ?? s.openedAt) }}
+                    </span>
+                  </p>
+                </div>
+                <div class="lc-session-actions">
+                  <span class="lc-status-pill active-pill">Active</span>
+                  <button mat-stroked-button class="action-btn red-btn lc-close-btn" (click)="forceCloseSession(s.id)" matTooltip="Force end this chat session">
+                    <mat-icon>call_end</mat-icon>
+                    End Chat
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
         }
 
       </div>

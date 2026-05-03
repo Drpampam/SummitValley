@@ -1477,3 +1477,190 @@
   color: var(--nb-text-muted);
   mat-icon { font-size: 13px; width: 13px; height: 13px; }
 }
+
+// ── Live Chat Monitoring tab ───────────────────────────────────────────────────
+.lc-stats-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.lc-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: var(--nb-radius-lg);
+  border: 1px solid var(--nb-border);
+  background: var(--nb-card-bg);
+  min-width: 140px;
+  flex: 1;
+
+  &.pending { border-color: rgba(245,158,11,.3); background: rgba(245,158,11,.05); }
+  &.active  { border-color: rgba(16,185,129,.3); background: rgba(16,185,129,.05); }
+  &.total   { border-color: var(--nb-primary-light); background: var(--nb-primary-pale); }
+}
+
+.lc-stat-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+
+  .pending & { background: rgba(245,158,11,.15); mat-icon { color: #d97706; } }
+  .active &  { background: rgba(16,185,129,.15); mat-icon { color: #059669; } }
+  .total &   { background: var(--nb-primary-light); mat-icon { color: var(--nb-primary); } }
+
+  mat-icon { font-size: 20px; }
+}
+
+.lc-stat-info {
+  .lc-stat-num   { margin: 0; font-size: 24px; font-weight: 800; line-height: 1.1; }
+  .lc-stat-label { margin: 0; font-size: 11px; color: var(--nb-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+
+  .pending & .lc-stat-num { color: #d97706; }
+  .active &  .lc-stat-num { color: #059669; }
+  .total &   .lc-stat-num { color: var(--nb-primary); }
+}
+
+.lc-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--nb-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+  mat-icon { font-size: 16px; color: var(--nb-text-muted); }
+}
+
+.lc-empty {
+  padding: 40px 24px;
+  mat-icon { font-size: 36px; width: 36px; height: 36px; }
+}
+
+.lc-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lc-session-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: var(--nb-radius-lg);
+  border: 1px solid var(--nb-border);
+  background: var(--nb-card-bg);
+  animation: fadeInUp .15s ease-out both;
+  transition: box-shadow .2s;
+
+  &:hover { box-shadow: var(--nb-shadow-sm); }
+
+  &.pending-card { border-left: 3px solid #f59e0b; }
+  &.active-card  { border-left: 3px solid #10b981; }
+}
+
+.lc-session-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--nb-primary), #cc4444);
+  color: #fff;
+  font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+
+  &.active-avatar { background: linear-gradient(135deg, #059669, #10b981); }
+}
+
+.lc-session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lc-session-name {
+  margin: 0 0 5px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--nb-text);
+}
+
+.lc-session-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 4px;
+}
+
+.lc-topic-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px; font-weight: 600;
+  background: rgba(102,0,0,.08);
+  color: var(--nb-primary);
+}
+
+.lc-agent-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px; font-weight: 600;
+  background: rgba(16,185,129,.1);
+  color: #059669;
+  mat-icon { font-size: 12px; width: 12px; height: 12px; }
+}
+
+.lc-wait-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--nb-text-muted);
+  mat-icon { font-size: 12px; width: 12px; height: 12px; }
+}
+
+.lc-context {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--nb-text-muted);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+}
+
+.lc-session-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.lc-status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .4px;
+
+  &.waiting     { background: rgba(245,158,11,.12); color: #92400e; }
+  &.active-pill { background: rgba(16,185,129,.12); color: #065f46; }
+}
+
+.lc-close-btn {
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  line-height: 1.4 !important;
+  min-width: 0 !important;
+  white-space: nowrap;
+}
