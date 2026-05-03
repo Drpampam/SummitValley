@@ -33,6 +33,9 @@ export class LiveChatService {
   private _queueCbs:  QueueEntry[] = [];
   private _sessionCbs = new Map<string, SessionEntry>();
 
+  /** Tracks sessions already notified so Supabase + localStorage don't double-toast. */
+  private _notifiedSessionIds = new Set<string>();
+
   readonly onlineAgentCount = signal(0);
 
   static readonly STALE_PENDING_MS = 2 * 60 * 60 * 1000; // 2 h
@@ -68,8 +71,10 @@ export class LiveChatService {
             const prev = prevMap.get(s.id);
 
             if (!prev && s.status === 'pending') {
-              // New session — skip toast if Supabase queue is live (it delivers it)
-              if (!this._channels.has('queue')) {
+              // Deduplicate: Supabase broadcast and localStorage may both deliver.
+              // First arrival wins; second is ignored.
+              if (!this._notifiedSessionIds.has(s.id)) {
+                this._notifiedSessionIds.add(s.id);
                 this._queueCbs.forEach(cb => cb.onNewSession(s));
               }
             } else if (prev && prev.status !== s.status) {
@@ -215,6 +220,7 @@ export class LiveChatService {
       this._broadcastToQueue('session_update', closed);
       this._broadcastOnSession(closed.id, 'session_update', closed);
       this._customerQueueCbs.delete(sessionId);
+      this._notifiedSessionIds.delete(sessionId);
     }
   }
 
@@ -233,6 +239,7 @@ export class LiveChatService {
       this._broadcastToQueue('session_update', abandoned);
       this._broadcastOnSession(abandoned.id, 'session_update', abandoned);
       this._customerQueueCbs.delete(sessionId);
+      this._notifiedSessionIds.delete(sessionId);
     }
   }
 
@@ -338,7 +345,10 @@ export class LiveChatService {
         this._sessions.update(list =>
           list.some(x => x.id === s.id) ? list : [s, ...list]
         );
-        this._queueCbs.forEach(cb => cb.onNewSession(s));
+        if (!this._notifiedSessionIds.has(s.id)) {
+          this._notifiedSessionIds.add(s.id);
+          this._queueCbs.forEach(cb => cb.onNewSession(s));
+        }
       })
       .on('broadcast', { event: 'session_update' }, ({ payload }) => {
         const s = payload as LiveChatSession;
