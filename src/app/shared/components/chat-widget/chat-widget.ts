@@ -261,6 +261,14 @@ export class ChatWidgetComponent implements OnDestroy {
     this._scrollBottom();
   }
 
+  declineLiveAgent(): void {
+    // Return to the step the user came from rather than always going to greeting
+    if (this._message)     this.step.set('priority');
+    else if (this._topic)  this.step.set('message');
+    else                   this.step.set('greeting');
+    this._scrollBottom();
+  }
+
   confirmLiveAgent(): void {
     const user  = this.auth.user();
     const name  = user ? `${user.firstName} ${user.lastName}` : this.guestName();

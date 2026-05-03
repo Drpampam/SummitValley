@@ -60,7 +60,7 @@
           >
             <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
             <span class="nav-label">{{ item.label }}</span>
-            @if (item.path === '/support' && pendingLiveCount() > 0) {
+            @if ((item.path === '/support' || item.path === '/admin') && pendingLiveCount() > 0) {
               <span class="nav-live-badge">{{ pendingLiveCount() }}</span>
             }
           </a>

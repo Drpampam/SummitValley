@@ -68,13 +68,8 @@ export class SupportComponent implements OnInit, OnDestroy {
     if (!user) return;
     // Track presence so customers see agents online
     this.liveSvc.subscribeToAgentPresence(user.id, `${user.firstName} ${user.lastName}`);
-    // Listen for new sessions
-    this._unsubQueue = this.liveSvc.subscribeToQueue(
-      (session) => {
-        this.toast.info(`💬 New live chat from ${session.guestName ?? this._resolveCustomerName(session.customerId)}`);
-      },
-      () => {},
-    );
+    // Register with the queue so the channel is always active; toast is handled by shell.ts
+    this._unsubQueue = this.liveSvc.subscribeToQueue(() => {}, () => {});
   }
 
   ngOnDestroy(): void {
