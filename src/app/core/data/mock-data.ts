@@ -117,7 +117,7 @@ export const MOCK_USERS: User[] = [
     country: 'US',
     locale: 'en-US',
     role: 'user',
-    mustChangePassword: true,
+    mustChangePassword: false,
     createdAt: '2024-04-22T00:00:00Z',
   },
   {
@@ -130,7 +130,7 @@ export const MOCK_USERS: User[] = [
     country: 'US',
     locale: 'en-US',
     role: 'user',
-    mustChangePassword: true,
+    mustChangePassword: false,
     createdAt: '2024-04-22T00:00:00Z',
   },
 
